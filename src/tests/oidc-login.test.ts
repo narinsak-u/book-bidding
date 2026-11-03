@@ -11,15 +11,15 @@ describe('Book Bidding OIDC login over the public browser flow', () => {
 
 		const browser = await chromium.launch();
 		try {
-			const page = await browser.newPage();
+			const page = await browser.newPage({ ignoreHTTPSErrors: true });
 			await page.goto(`${app}/auth/login`);
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await expect.poll(() => page.url()).toContain('auth.127.0.0.1.nip.io');
 			await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email);
-			await page.getByRole('textbox', { name: 'Password', exact: true }).fill(password);
+			await page.getByLabel('Password', { exact: true }).fill(password);
 			await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 			await expect.poll(() => page.url()).toContain('bidding.127.0.0.1.sslip.io');
-			await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
+			expect(await page.getByRole('heading', { name: /dashboard/i }).isVisible()).toBe(true);
 			const localSession = await page.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			);
