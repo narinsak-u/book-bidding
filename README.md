@@ -38,8 +38,8 @@ Set in `.env` (private) or `.env.local`:
 
 - `BETTER_AUTH_SECRET` — long random secret
 - `BETTER_AUTH_URL` — app base URL (e.g. http://localhost:5173)
-- `DATABASE_URL` — Turso/LibSQL URL
-- `DATABASE_AUTH_TOKEN` — Turso auth token
+- `DATABASE_URL` — LibSQL URL; local SQLite uses `file:local.db`
+- `DATABASE_AUTH_TOKEN` — required for remote Turso databases; not needed for local SQLite
 - `PUBLIC_SUPABASE_URL` — Supabase project URL
 - `PUBLIC_SUPABASE_PUBLISHABLE_KEY` — Supabase anon key
 - `SECRET_STRIPE_KEY` — Stripe secret key
@@ -74,13 +74,13 @@ For the complete local TLS and operator-only confidential-client provisioning se
 The live browser test uses a newly verified central test identity with no existing Book Bidding user:
 
 ```sh
-VITE_OIDC_TEST_EMAIL='new-address@example.test' VITE_OIDC_TEST_PASSWORD='the verified identity password' npm run test:unit -- --run src/tests/oidc-login.svelte.spec.ts
+VITE_OIDC_TEST_EMAIL='new-address@example.test' VITE_OIDC_TEST_PASSWORD='the verified identity password' npm run test:unit -- --run src/tests/oidc-login.test.ts
 ```
 
 For the separate same-email protection test, verify a Central Identity that has no Book Bidding user yet. The test creates that ordinary local password user through the public auth endpoint, attempts Central sign-in using the same email, then signs back in locally and confirms the Application User ID is unchanged:
 
 ```sh
-VITE_OIDC_CONFLICT_EMAIL='existing-user@example.test' VITE_OIDC_CONFLICT_PASSWORD='verified central password' VITE_OIDC_LOCAL_PASSWORD='local app password' npm run test:unit -- --run src/tests/oidc-email-collision.svelte.spec.ts
+VITE_OIDC_CONFLICT_EMAIL='existing-user@example.test' VITE_OIDC_CONFLICT_PASSWORD='verified central password' VITE_OIDC_LOCAL_PASSWORD='local app password' npm run test:unit -- --run src/tests/oidc-email-collision.test.ts
 ```
 
 ## Image Upload
