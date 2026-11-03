@@ -83,6 +83,15 @@ For the separate same-email protection test, verify a Central Identity that has 
 VITE_OIDC_CONFLICT_EMAIL='existing-user@example.test' VITE_OIDC_CONFLICT_PASSWORD='verified central password' VITE_OIDC_LOCAL_PASSWORD='local app password' npm run test:unit -- --run src/tests/oidc-email-collision.test.ts
 ```
 
+To link an existing legacy Application User, sign in with its existing password or social provider and choose **Identity Link** in the signed-in navigation. The protected page starts Better Auth's explicit `linkSocial` flow; authenticate separately at Central Identity. The Central Identity can use a different verified email. A failed or conflicting link does not change the local user; conflicting identities require reviewed recovery.
+
+The opt-in live browser journey signs in with both credentials, links Central Identity, then signs out and confirms a later Central Identity sign-in selects the original Application User:
+
+```sh
+NODE_EXTRA_CA_CERTS=../book-auth-middleware/central-identity-root.crt VITE_OIDC_LINK_LOCAL_EMAIL='legacy-user@example.test' VITE_OIDC_LINK_LOCAL_PASSWORD='legacy app password' VITE_OIDC_LINK_CENTRAL_EMAIL='different-address@example.test' VITE_OIDC_LINK_CENTRAL_PASSWORD='verified central password' bun run test:unit -- --run src/tests/oidc-identity-link.test.ts
+```
+```
+
 ## Image Upload
 
 Supabase Storage holds images. Previews use the public URL from the stored `fileKey`.

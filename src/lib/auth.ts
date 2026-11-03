@@ -29,6 +29,7 @@ export const auth = betterAuth({
     account: {
         accountLinking: {
             disableImplicitLinking: true,
+            allowDifferentEmails: true,
         },
     },
 

@@ -112,6 +112,12 @@
             >
               My Sales
             </a>
+            <a
+              href="/account/identity"
+              class="text-foreground hover:text-primary transition font-koulen"
+            >
+              Identity Link
+            </a>
           {/if}
         </div>
 
@@ -298,6 +304,15 @@
               class="block cursor-pointer w-full text-left py-3 px-2 rounded-lg text-foreground hover:bg-muted font-koulen"
             >
               My Sales
+            </button>
+            <button
+              onclick={() => {
+                openDrawer = false;
+                goto("/account/identity");
+              }}
+              class="block cursor-pointer w-full text-left py-3 px-2 rounded-lg text-foreground hover:bg-muted font-koulen"
+            >
+              Identity Link
             </button>
             <button
               onclick={() => {
