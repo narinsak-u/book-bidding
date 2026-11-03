@@ -5,7 +5,7 @@ const app = import.meta.env.VITE_OIDC_TEST_APP ?? 'https://bidding.127.0.0.1.ssl
 const email = import.meta.env.VITE_OIDC_TEST_EMAIL;
 const password = import.meta.env.VITE_OIDC_TEST_PASSWORD;
 
-describe('Book Bidding OIDC login over the public browser flow', () => {
+describe.skipIf(!email && !password)('Book Bidding OIDC login over the public browser flow', () => {
 	it('returns a central identity to a new ordinary application session', async () => {
 		if (!email || !password) throw new Error('Set VITE_OIDC_TEST_EMAIL and VITE_OIDC_TEST_PASSWORD for the live OIDC browser test');
 
