@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { genericOAuth } from "better-auth/plugins";
 import { db } from "./server/db";
 import { getRequestEvent } from "$app/server";
 import { sveltekitCookies } from "better-auth/svelte-kit";
@@ -9,7 +10,7 @@ import { dev } from "$app/environment";
 
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
-        provider: "sqlite", // or "mysql", "sqlite"
+        provider: "sqlite",
     }),
 
     // Configure base URL for dev vs production
@@ -21,6 +22,15 @@ export const auth = betterAuth({
         PUBLIC_BASE_URL,
         PUBLIC_FRONTEND_URL,
     ].filter(Boolean),
+    advanced: {
+        useSecureCookies: true,
+    },
+
+    account: {
+        accountLinking: {
+            disableImplicitLinking: true,
+        },
+    },
 
     emailAndPassword: {
         enabled: true,
@@ -41,5 +51,22 @@ export const auth = betterAuth({
     // Configure secret for session security
     secret: env.BETTER_AUTH_SECRET,
 
-    plugins: [sveltekitCookies(getRequestEvent)], // make sure this is the last plugin in the array
+    plugins: [
+        genericOAuth({
+            config: [{
+                providerId: "central-identity",
+                discoveryUrl: env.CENTRAL_OIDC_ISSUER
+                    ? `${env.CENTRAL_OIDC_ISSUER}/.well-known/openid-configuration`
+                    : "https://auth.127.0.0.1.nip.io/.well-known/openid-configuration",
+                requireIdTokenVerification: true,
+                clientId: env.CENTRAL_OIDC_CLIENT_ID ?? "",
+                clientSecret: env.CENTRAL_OIDC_CLIENT_SECRET ?? "",
+                tokenEndpointAuth: { method: "client_secret_basic" },
+                scopes: ["openid", "email", "profile"],
+                pkce: true,
+                disableProviderLogout: true,
+            }],
+        }),
+        sveltekitCookies(getRequestEvent), // keep cookies last
+    ],
 });

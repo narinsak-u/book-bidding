@@ -63,7 +63,25 @@ Schema in `src/lib/server/db/schema.ts`.
 
 - Server: `src/lib/auth.ts` enables email/password. `src/hooks.server.ts` mounts Better Auth and populates `event.locals.user`/`session`.
 - Client: `src/lib/auth-client.ts` provides `authClient` for login and social sign-in.
-- OAuth: To enable Google/GitHub, add `socialProviders` in `src/lib/auth.ts` and set provider callback URLs (e.g. `http://localhost:5173/api/auth/callback/google` and `/github`).
+- OAuth: Email/password, Google, GitHub, and Central Identity sign-in are configured in `src/lib/auth.ts`; see the OIDC setup below for confidential-client provisioning and the exact HTTPS callback.
+
+## Central Identity OIDC
+
+The app uses Better Auth Generic OAuth against the central issuer. The exact registered callback is `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`; the issuer is `https://auth.127.0.0.1.nip.io`. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+
+For the complete local TLS and operator-only confidential-client provisioning sequence, follow **Book Bidding OIDC demo** in the sibling `book-auth-middleware` README. Set the one-time client ID and secret printed by its `bun run provision:bidding` command in this repository's ignored `.env` as `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Keep the secret private; do not commit it. Run the app with `npm run dev -- --host 0.0.0.0` behind the auth repo's Caddy TLS proxy so the registered HTTPS callback is reachable.
+
+The live browser test uses a newly verified central test identity with no existing Book Bidding user:
+
+```sh
+VITE_OIDC_TEST_EMAIL='new-address@example.test' VITE_OIDC_TEST_PASSWORD='the verified identity password' npm run test:unit -- --run src/tests/oidc-login.svelte.spec.ts
+```
+
+For the separate same-email protection test, verify a Central Identity that has no Book Bidding user yet. The test creates that ordinary local password user through the public auth endpoint, attempts Central sign-in using the same email, then signs back in locally and confirms the Application User ID is unchanged:
+
+```sh
+VITE_OIDC_CONFLICT_EMAIL='existing-user@example.test' VITE_OIDC_CONFLICT_PASSWORD='verified central password' VITE_OIDC_LOCAL_PASSWORD='local app password' npm run test:unit -- --run src/tests/oidc-email-collision.svelte.spec.ts
+```
 
 ## Image Upload
 
