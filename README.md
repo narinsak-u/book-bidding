@@ -67,7 +67,7 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Central Identity OIDC
 
-The app uses Better Auth Generic OAuth against the central issuer. The exact registered callback is `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`; the issuer is `https://auth.127.0.0.1.nip.io`. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+The app uses Better Auth Generic OAuth against the central issuer `https://auth.127.0.0.1.nip.io/api/auth`. The exact registered callback is `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
 
 For the complete local TLS and operator-only confidential-client provisioning sequence, follow **Book Bidding OIDC demo** in the sibling `book-auth-middleware` README. Set the one-time client ID and secret printed by its `bun run provision:bidding` command in this repository's ignored `.env` as `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Keep the secret private; do not commit it. Run the app with `npm run dev -- --host 0.0.0.0` behind the auth repo's Caddy TLS proxy so the registered HTTPS callback is reachable.
 
