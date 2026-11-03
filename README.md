@@ -52,9 +52,9 @@ Set in `.env` (private) or `.env.local`:
 Drizzle with LibSQL/Turso.
 
 ```sh
-npm run db:generate   # generate SQL
-npm run db:migrate    # apply migrations
-npm run db:studio     # inspect
+bun run db:generate   # generate SQL
+bun run db:push       # create/update the local SQLite schema
+bun run db:studio     # inspect
 ```
 
 Schema in `src/lib/server/db/schema.ts`.
