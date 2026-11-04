@@ -131,9 +131,11 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 		try {
 			const context = await browser.newContext({ ignoreHTTPSErrors: true });
 			const page = await context.newPage();
-			const identityReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await page.goto(`${bidding}/account/identity`);
-			await identityReady;
+			await page.waitForURL(
+				(url) => url.pathname === '/auth/login' && url.searchParams.get('next') === '/account/identity',
+				{ timeout: 20_000 },
+			);
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
 			const centralForm = centralSignInForm(page);
