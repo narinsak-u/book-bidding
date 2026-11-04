@@ -65,7 +65,17 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Central Identity OIDC
 
-The app uses Better Auth Generic OAuth against the central issuer `https://auth.127.0.0.1.nip.io/api/auth`. The exact registered callback is `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+The local demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io/api/auth` with callback `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+
+For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register only this exact HTTPS callback at Central Identity, replacing the placeholder with that supplied host:
+
+```text
+https://<bidding-host>/api/auth/callback/central-identity
+```
+
+Configure the Central Identity issuer as `<real-issuer-origin>/api/auth`. Put the provider-issued client ID and secret in the encrypted `.env.production` configuration and separately enter them in Vercel **Project Settings → Environment Variables** for the Production environment. Set these private Vercel runtime variables to the matching values from `.env.production`: `BETTER_AUTH_URL`, `CENTRAL_OIDC_ISSUER`, `CENTRAL_OIDC_CLIENT_ID`, `CENTRAL_OIDC_CLIENT_SECRET`, and `BETTER_AUTH_SECRET`. `BETTER_AUTH_URL` is the `https://<bidding-host>` app origin. Also set `PUBLIC_FRONTEND_URL` to the same origin as a build-time public value used for links and redirects.
+
+The app reads the private values through SvelteKit's `$env/dynamic/private` inside server code, so Vercel Functions receive them at runtime; no `.env.keys` decryption key or decrypted env file is needed in the build or Function. The committed `.env.production` remains encrypted, with its private key kept outside Git and Vercel artifacts. Keep the Vercel Production settings in sync with it when rotating credentials. Do not use local `.nip.io`/`.sslip.io` values in production or configure a registration until the real hostname is known.
 
 **Book Bidding sign-out** ends only this app's Application Session; Read in
 Peace and Central Identity remain signed in. **Central sign-out** (also
@@ -115,6 +125,5 @@ SSE at `routes/api/realtime/bids` streams bid events. Client store in `src/lib/s
 
 ## Deployment
 
-- Set `BETTER_AUTH_URL` and `PUBLIC_FRONTEND_URL` to your domain.
-- Configure your SvelteKit adapter.
-- Ensure all environment variables are set on the host.
+- Book Bidding is configured for `@sveltejs/adapter-vercel`. Production issuer, client credentials, `BETTER_AUTH_URL`, and `BETTER_AUTH_SECRET` must be present as private Vercel runtime variables; auth initialization rejects missing or blank values instead of falling back to local demo hosts.
+- Follow **Central Identity OIDC** above for the exact production callback and the separate encrypted configuration/Vercel runtime setup. Live Vercel and callback verification require the operator's real hostname, project access, and credentials.

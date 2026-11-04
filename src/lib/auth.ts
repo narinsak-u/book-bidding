@@ -7,21 +7,21 @@ import { sveltekitCookies } from "better-auth/svelte-kit";
 import { env } from "$env/dynamic/private";
 import { PUBLIC_BASE_URL, PUBLIC_FRONTEND_URL } from "$env/static/public";
 import { dev } from "$app/environment";
+import { getAuthRuntimeSettings } from "./server/auth-runtime-settings";
+
+const settings = getAuthRuntimeSettings(!dev, PUBLIC_BASE_URL);
 
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "sqlite",
     }),
 
-    // Configure base URL for dev vs production
-    baseURL: dev ? (PUBLIC_BASE_URL || env.BETTER_AUTH_URL) : PUBLIC_FRONTEND_URL,
+    baseURL: settings.appOrigin,
 
     // Add trusted origins for dev and production
-    trustedOrigins: [
-        dev ? (PUBLIC_BASE_URL || env.BETTER_AUTH_URL) : PUBLIC_FRONTEND_URL,
-        PUBLIC_BASE_URL,
-        PUBLIC_FRONTEND_URL,
-    ].filter(Boolean),
+    trustedOrigins: dev
+        ? [settings.appOrigin, PUBLIC_BASE_URL, PUBLIC_FRONTEND_URL].filter(Boolean)
+        : [settings.appOrigin],
     advanced: {
         useSecureCookies: true,
     },
@@ -50,16 +50,16 @@ export const auth = betterAuth({
     },
 
     // Configure secret for session security
-    secret: env.BETTER_AUTH_SECRET,
+    secret: settings.sessionSecret,
 
     plugins: [
         genericOAuth({
             config: [{
                 providerId: "central-identity",
-                discoveryUrl: `${env.CENTRAL_OIDC_ISSUER}/.well-known/openid-configuration`,
+                discoveryUrl: `${settings.issuer}/.well-known/openid-configuration`,
                 requireIdTokenVerification: true,
-                clientId: env.CENTRAL_OIDC_CLIENT_ID ?? "",
-                clientSecret: env.CENTRAL_OIDC_CLIENT_SECRET ?? "",
+                clientId: settings.clientId,
+                clientSecret: settings.clientSecret,
                 tokenEndpointAuth: { method: "client_secret_basic" },
                 scopes: ["openid", "email", "profile"],
                 pkce: true,
@@ -69,3 +69,4 @@ export const auth = betterAuth({
         sveltekitCookies(getRequestEvent), // keep cookies last
     ],
 });
+
