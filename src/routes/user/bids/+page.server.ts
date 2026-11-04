@@ -3,12 +3,11 @@ import { db } from "$lib/server/db";
 import { getImage } from "../../helpers";
 import { redirect } from "@sveltejs/kit";
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
     const user = await locals.user;
 
     if (!user?.id) {
-        redirect(302, '/auth/login')
-        // return { bids: [] };
+        redirect(302, `/auth/login?next=${encodeURIComponent(url.pathname + url.search)}`)
     }
 
     const myBids = await db.query.bids.findMany({

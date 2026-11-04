@@ -6,11 +6,11 @@ import { eq } from "drizzle-orm";
 import { BUCKET_NAME } from "./shared/constants";
 import { supabase } from "$lib/supabase-client";
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 
     // get user from locals
     if (!locals.user?.id) {
-        redirect(302, '/auth/login');
+        redirect(302, `/auth/login?next=${encodeURIComponent(url.pathname + url.search)}`);
     }
 
     // get user's books
