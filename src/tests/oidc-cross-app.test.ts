@@ -153,7 +153,6 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			await page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`);
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-			const centralForm = centralSignInForm(page);
 			await centralForm.getByLabel(/email/i).fill(email!);
 			await centralForm.getByLabel(/password/i).fill(password!);
 			await centralForm.getByRole('button', { name: /sign in/i }).click();
