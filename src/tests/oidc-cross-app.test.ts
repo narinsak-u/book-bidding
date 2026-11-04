@@ -142,14 +142,28 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/account/identity(?:\\?.*)?$`), { timeout: 20_000 });
 
+			const localSignOut = page.waitForResponse((response) =>
+				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
+			);
+			await page.getByRole('button', { name: 'Book Bidding sign-out' }).click();
+			await localSignOut;
+			expect(await page.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).toBeNull();
+
 			const centralPage = await context.newPage();
 			await centralPage.goto('https://auth.127.0.0.1.nip.io');
-			const centralSessionEnded = await centralPage.evaluate(async () => {
-				const response = await fetch('/api/auth/sign-out', { method: 'POST' });
-				if (!response.ok) return false;
-				return await fetch('/api/auth/get-session').then((session) => session.json()) === null;
-			});
-			expect(centralSessionEnded).toBe(true);
+			const centralSignOutButton = centralPage.getByRole('button', { name: 'Sign out of Central Identity' });
+			await centralSignOutButton.waitFor({ state: 'visible' });
+			const centralSignOut = centralPage.waitForResponse((response) =>
+				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
+			);
+			await centralSignOutButton.click();
+			await centralSignOut;
+			await centralPage.waitForText('Central SSO Session ended');
+			expect(await centralPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).toBeNull();
 			await page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`);
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
