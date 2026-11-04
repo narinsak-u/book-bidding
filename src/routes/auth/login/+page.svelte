@@ -1,9 +1,11 @@
 <script lang="ts">
   import { authClient } from "$lib/auth-client";
   import AuthForm from "$lib/components/AuthForm.svelte";
+  import { env as publicEnv } from "$env/dynamic/public";
 
   let loading = $state(false);
   let providerLoading: null | "google" | "github" | "central-identity" = $state(null);
+  const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL || "https://auth.127.0.0.1.nip.io";
 
   const signInWithProvider = async (provider: "google" | "github" | "central-identity") => {
     loading = true;
@@ -64,6 +66,9 @@
             ? "Loading..."
             : "Continue with Central Identity"}
         </button>
+        <a href={centralIdentityUrl} class="block py-2 text-center text-sm text-primary underline underline-offset-2">
+          Manage Central Identity / sign out centrally
+        </a>
         <button
           type="button"
           disabled={loading}

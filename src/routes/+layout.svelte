@@ -8,6 +8,7 @@
   import { FALLBACK_IMAGE } from "./dashboard/shared/constants";
   import { Button, Modal, P, Drawer } from "flowbite-svelte";
   import { PUBLIC_BASE_URL, PUBLIC_FRONTEND_URL } from "$env/static/public";
+  import { env as publicEnv } from "$env/dynamic/public";
   import { dev } from "$app/environment";
 
   let { children, data }: { children: Snippet; data: LayoutData } = $props();
@@ -17,6 +18,18 @@
   const siteUrl = dev ? PUBLIC_BASE_URL : PUBLIC_FRONTEND_URL;
   const siteName = "Book Bidding";
   const siteDesc = "Premium book auction platform for collectors.";
+  const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL || "https://auth.127.0.0.1.nip.io";
+  let signOutError = $state("");
+
+  async function signOutOfBidding() {
+    const { error } = await authClient.signOut();
+    if (error) {
+      signOutError = "Book Bidding sign-out failed. Try again.";
+      return;
+    }
+    openDrawer = false;
+    await goto("/auth/login", { invalidateAll: true });
+  }
 </script>
 
 <svelte:head>
@@ -135,15 +148,16 @@
                 {data.user?.name || "Username"}
               </span>
             </div>
+            <a href={centralIdentityUrl} class="text-sm text-foreground hover:text-primary">
+              Central sign-out
+            </a>
             <button
-              onclick={async () => {
-                await authClient.signOut();
-                goto("/auth/login", { invalidateAll: true });
-              }}
+              onclick={signOutOfBidding}
               class="px-4 font-koulen cursor-pointer py-2 text-foreground hover:bg-red-900/30 rounded-lg transition"
             >
-              Sign Out
+              Book Bidding sign-out
             </button>
+            {#if signOutError}<p role="alert" class="text-sm text-red-700">{signOutError}</p>{/if}
           {:else}
             <a
               href="/auth/login"
@@ -327,16 +341,19 @@
         {/if}
         <div class="mt-4">
           {#if data.sessionId}
+            <a
+              href={centralIdentityUrl}
+              class="block w-full py-3 px-2 text-foreground hover:bg-muted font-koulen"
+            >
+              Manage Central Identity / sign out centrally
+            </a>
             <button
-              onclick={async () => {
-                await authClient.signOut();
-                openDrawer = false;
-                goto("/auth/login", { invalidateAll: true });
-              }}
+              onclick={signOutOfBidding}
               class="w-full cursor-pointer py-3 px-2 rounded-lg text-foreground hover:bg-red-900/30 bg-red-900/50 transition font-koulen"
             >
-              Sign Out
+              Book Bidding sign-out
             </button>
+            {#if signOutError}<p role="alert" class="px-2 py-2 text-sm text-red-700">{signOutError}</p>{/if}
           {:else}
             <a
               href="/auth/login"
