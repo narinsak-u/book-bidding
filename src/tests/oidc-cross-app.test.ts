@@ -25,31 +25,34 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 		try {
 			const context = await browser.newContext({ ignoreHTTPSErrors: true });
 			const biddingPage = await context.newPage();
-			await biddingPage.goto(`${bidding}/auth/login`);
+			await biddingPage.goto(`${bidding}/auth/login`, { waitUntil: 'networkidle' });
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
 			await biddingPage.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
+			await biddingPage.waitForLoadState('networkidle');
 			const centralForm = centralSignInForm(biddingPage);
 			await centralForm.getByLabel(/email/i).fill(email);
 			await centralForm.getByLabel(/password/i).fill(password);
 			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await biddingPage.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`), { timeout: 20_000 });
+			await biddingPage.waitForLoadState('networkidle');
 			const biddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			);
 			expect(biddingSession.user.email).toBe(email);
 
 			const readingPage = await context.newPage();
-			await readingPage.goto(`${reading}/dashboard`);
+			await readingPage.goto(`${reading}/dashboard`, { waitUntil: 'networkidle' });
 			await readingPage.getByRole('button', { name: 'Sign in', exact: true }).first().click();
 			await readingPage.getByRole('dialog').getByRole('button', { name: 'Continue with Central Identity' }).click();
 			await readingPage.waitForURL(new RegExp(`${reading.replaceAll('.', '\\.')}/?$`), { timeout: 20_000 });
+			await readingPage.waitForLoadState('networkidle');
 			const readingSession = await readingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			);
 			expect(readingSession.user.email).toBe(email);
 			expect(readingSession.session.id).not.toBe(biddingSession.session.id);
 			expect(readingSession.user.id).not.toBe(biddingSession.user.id);
-			await readingPage.goto(`${reading}/dashboard`);
+			await readingPage.goto(`${reading}/dashboard`, { waitUntil: 'networkidle' });
 
 			const biddingSignedOut = biddingPage.waitForResponse((response) =>
 				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
@@ -63,16 +66,17 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				fetch('/api/auth/get-session').then((response) => response.json())
 			)).session.id).toBe(readingSession.session.id);
 
-			await biddingPage.goto(`${bidding}/auth/login`);
+			await biddingPage.goto(`${bidding}/auth/login`, { waitUntil: 'networkidle' });
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
 			await biddingPage.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`), { timeout: 20_000 });
+			await biddingPage.waitForLoadState('networkidle');
 			const restoredBiddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			);
 			expect(restoredBiddingSession.user.email).toBe(email);
 
 			const centralPage = await context.newPage();
-			await centralPage.goto(centralIdentity);
+			await centralPage.goto(centralIdentity, { waitUntil: 'networkidle' });
 			const centralSignOut = await centralPage.evaluate(async () =>
 				fetch('/api/auth/sign-out', { method: 'POST' }).then((response) => response.ok)
 			);
@@ -129,18 +133,21 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 		try {
 			const context = await browser.newContext({ ignoreHTTPSErrors: true });
 			const page = await context.newPage();
-			await page.goto(`${bidding}/account/identity`);
+			await page.goto(`${bidding}/account/identity`, { waitUntil: 'networkidle' });
 			await page.waitForURL(
 				(url) => url.pathname === '/auth/login' && url.searchParams.get('next') === '/account/identity',
 				{ timeout: 20_000 },
 			);
+			await page.waitForLoadState('networkidle');
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
+			await page.waitForLoadState('networkidle');
 			const centralForm = centralSignInForm(page);
 			await centralForm.getByLabel(/email/i).fill(email!);
 			await centralForm.getByLabel(/password/i).fill(password!);
 			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/account/identity(?:\\?.*)?$`), { timeout: 20_000 });
+			await page.waitForLoadState('networkidle');
 
 			const localSignOut = page.waitForResponse((response) =>
 				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
@@ -152,7 +159,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			)).toBeNull();
 
 			const centralPage = await context.newPage();
-			await centralPage.goto(centralIdentity);
+			await centralPage.goto(centralIdentity, { waitUntil: 'networkidle' });
 			const centralSignOutButton = centralPage.getByRole('button', { name: 'Sign out of Central Identity' });
 			await centralSignOutButton.waitFor({ state: 'visible' });
 			const centralSignOut = centralPage.waitForResponse((response) =>
@@ -164,13 +171,15 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(await centralPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			)).toBeNull();
-			await page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`);
+			await page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`, { waitUntil: 'networkidle' });
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
+			await page.waitForLoadState('networkidle');
 			await centralForm.getByLabel(/email/i).fill(email!);
 			await centralForm.getByLabel(/password/i).fill(password!);
 			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard(?:\\?.*)?$`), { timeout: 20_000 });
+			await page.waitForLoadState('networkidle');
 			expect(new URL(page.url()).origin).toBe(new URL(bidding).origin);
 			expect(new URL(page.url()).pathname).toBe('/dashboard');
 		} finally {
