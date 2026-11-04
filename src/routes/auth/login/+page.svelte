@@ -1,11 +1,18 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { authClient } from "$lib/auth-client";
   import AuthForm from "$lib/components/AuthForm.svelte";
   import { env as publicEnv } from "$env/dynamic/public";
+  import type { PageProps } from "./$types";
 
+  let { data }: PageProps = $props();
+  let mounted = $state(false);
   let loading = $state(false);
   let providerLoading: null | "google" | "github" | "central-identity" = $state(null);
   const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL || "https://auth.127.0.0.1.nip.io";
+  onMount(() => {
+    mounted = true;
+  });
 
   const signInWithProvider = async (provider: "google" | "github" | "central-identity") => {
     loading = true;
@@ -14,7 +21,7 @@
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: provider === "central-identity" ? "/dashboard" : "/",
+        callbackURL: provider === "central-identity" ? data.callbackURL : "/",
       });
     } catch (e) {
       console.error("Sign in with provider failed:", e);
@@ -58,7 +65,7 @@
       <div class="space-y-3 mt-6">
         <button
           type="button"
-          disabled={loading}
+          disabled={!mounted || loading}
           onclick={() => signInWithProvider("central-identity")}
           class="w-full flex items-center justify-center cursor-pointer bg-card border border-border text-foreground py-2 rounded-lg font-medium hover:bg-muted/50 disabled:opacity-50 transition"
         >
@@ -71,7 +78,7 @@
         </a>
         <button
           type="button"
-          disabled={loading}
+          disabled={!mounted || loading}
           onclick={() => signInWithProvider("google")}
           class="w-full flex items-center justify-center cursor-pointer bg-card border border-border text-foreground py-2 rounded-lg font-medium hover:bg-muted/50 disabled:opacity-50 transition"
         >
@@ -101,7 +108,7 @@
         </button>
         <button
           type="button"
-          disabled={loading}
+          disabled={!mounted || loading}
           onclick={() => signInWithProvider("github")}
           class="w-full flex items-center justify-center cursor-pointer bg-card border border-border text-foreground py-2 rounded-lg font-medium hover:bg-muted/50 disabled:opacity-50 transition"
         >

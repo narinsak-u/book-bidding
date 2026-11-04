@@ -1,3 +1,4 @@
+import { loginPath } from "$lib/server/login-path";
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
@@ -7,10 +8,10 @@ import { auth } from '$lib/auth';
 import { deleteFile, uploadFile } from '../../shared/helpers';
 import { getImage } from '../../../helpers';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, url }) => {
   const userId = locals.user?.id;
   if (!userId) {
-    redirect(302, '/login');
+    redirect(302, loginPath(url));
   }
 
   const auctionId = params.auctionId;
