@@ -34,7 +34,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			const readingReady = readingPage.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await readingPage.goto(`${reading}/dashboard`);
 			await readingReady;
-			await readingPage.getByRole('button', { name: 'Sign in' }).click();
+			await readingPage.getByRole('button', { name: 'Sign in', exact: true }).first().click();
 			await readingPage.getByRole('dialog').getByRole('button', { name: 'Continue with Central Identity' }).click();
 			await readingPage.waitForURL(new RegExp(`${reading.replaceAll('.', '\\.')}/?$`), { timeout: 20_000 });
 			const readingSession = await readingPage.evaluate(async () =>
