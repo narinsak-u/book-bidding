@@ -1,10 +1,13 @@
-import { chromium } from 'playwright';
+import { chromium, type Page } from 'playwright';
 import { describe, expect, it } from 'vitest';
 
 const bidding = import.meta.env.VITE_OIDC_TEST_APP ?? 'https://bidding.127.0.0.1.sslip.io';
 const reading = import.meta.env.VITE_OIDC_TEST_READING_APP ?? 'https://reading.lvh.me';
 const email = import.meta.env.VITE_OIDC_TEST_EMAIL;
 const password = import.meta.env.VITE_OIDC_TEST_PASSWORD;
+function centralSignInForm(page: Page) {
+	return page.locator('form').filter({ hasText: /sign in/i });
+}
 
 describe.skipIf(!email || !password)('Central Identity across Book Bidding and Read in Peace', () => {
 	it('keeps both application sessions independent of each other and Central Identity sign-out', async () => {
@@ -21,9 +24,10 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			await biddingReady;
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
 			await biddingPage.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-			await biddingPage.locator('#signin-email').fill(email);
-			await biddingPage.locator('#signin-password').fill(password);
-			await biddingPage.locator('#signin button').click();
+			const centralForm = centralSignInForm(biddingPage);
+			await centralForm.getByLabel(/email/i).fill(email);
+			await centralForm.getByLabel(/password/i).fill(password);
+			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await biddingPage.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`), { timeout: 20_000 });
 			const biddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
@@ -109,10 +113,10 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
 			await biddingPage.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-			await biddingPage.locator('#signin-email').waitFor({ state: 'visible' });
-			await biddingPage.locator('#signin-email').fill(email);
-			await biddingPage.locator('#signin-password').fill(password);
-			await biddingPage.locator('#signin button').click();
+			await centralForm.getByLabel(/email/i).waitFor({ state: 'visible' });
+			await centralForm.getByLabel(/email/i).fill(email);
+			await centralForm.getByLabel(/password/i).fill(password);
+			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await biddingPage.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`), { timeout: 20_000 });
 			const freshBiddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
@@ -131,9 +135,10 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			await identityReady;
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-			await page.getByLabel(/email/i).fill(email!);
-			await page.getByLabel(/password/i).fill(password!);
-			await page.getByRole('button', { name: /sign in/i }).click();
+			const centralForm = centralSignInForm(page);
+			await centralForm.getByLabel(/email/i).fill(email!);
+			await centralForm.getByLabel(/password/i).fill(password!);
+			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/account/identity(?:\\?.*)?$`), { timeout: 20_000 });
 
 			await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
