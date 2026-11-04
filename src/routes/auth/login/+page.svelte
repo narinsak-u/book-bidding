@@ -3,13 +3,14 @@
   import { authClient } from "$lib/auth-client";
   import AuthForm from "$lib/components/AuthForm.svelte";
   import { env as publicEnv } from "$env/dynamic/public";
+  import { dev } from "$app/environment";
   import type { PageProps } from "./$types";
 
   let { data }: PageProps = $props();
   let mounted = $state(false);
   let loading = $state(false);
   let providerLoading: null | "google" | "github" | "central-identity" = $state(null);
-  const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL || "https://auth.127.0.0.1.nip.io";
+  const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL;
   onMount(() => {
     mounted = true;
   });
@@ -40,15 +41,17 @@
   class="min-h-screen bg-linear-to-b from-primary/10 to-background flex items-center justify-center px-4"
 >
   <div class="w-full max-w-md">
-    <div
-      class="bg-primary/10 border border-primary/20 text-primary rounded-lg p-4 mb-4 text-center text-sm"
-    >
-      <p class="font-medium mb-1">Demo Account Access</p>
-      <p>
-        Email: <strong>admin@gmail.com</strong> &bull; Password:
-        <strong>123456789</strong>
-      </p>
-    </div>
+    {#if dev}
+      <div
+        class="bg-primary/10 border border-primary/20 text-primary rounded-lg p-4 mb-4 text-center text-sm"
+      >
+        <p class="font-medium mb-1">Demo Account Access</p>
+        <p>
+          Email: <strong>admin@gmail.com</strong> &bull; Password:
+          <strong>123456789</strong>
+        </p>
+      </div>
+    {/if}
     <div class="bg-card border border-border rounded-lg p-8 shadow-lg">
       <div class="text-center mb-4">
         <div
@@ -73,9 +76,11 @@
             ? "Loading..."
             : "Continue with Central Identity"}
         </button>
-        <a href={centralIdentityUrl} class="block py-2 text-center text-sm text-primary underline underline-offset-2">
-          Manage Central Identity / sign out centrally
-        </a>
+        {#if centralIdentityUrl}
+          <a href={centralIdentityUrl} class="block py-2 text-center text-sm text-primary underline underline-offset-2">
+            Manage Central Identity / sign out centrally
+          </a>
+        {/if}
         <button
           type="button"
           disabled={!mounted || loading}
