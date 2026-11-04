@@ -24,28 +24,26 @@ An auction platform built with SvelteKit 5. Users create book auctions, upload c
 
 ## Setup
 
+Install dependencies and keep the dotenvx key from the provider outside Git.
+Encrypted `.env.development` and `.env.production` are loaded explicitly:
+
 ```sh
-npm install
-npm run dev
-npm run check        # type check
-npm run test         # unit tests
-npm run build && npm run preview
+bun install
+bun run dev
+bun run check
+bun run test
+bun run build && bun run preview
 ```
 
-## Environment
+`bun run dev`, checks, tests, and database commands load `.env.development`.
+Build and preview load `.env.production`. Create/update config with dotenvx
+(`bunx dotenvx encrypt -f .env.development` or `-f .env.production`); never
+commit `.env.keys`. Back up the private key securely. Do not copy development
+settings into production or add production credentials until provisioned.
 
-Set in `.env` (private) or `.env.local`:
-
-- `BETTER_AUTH_SECRET` — long random secret
-- `BETTER_AUTH_URL` — app base URL (e.g. http://localhost:5173)
-- `DATABASE_URL` — LibSQL URL; local SQLite uses `file:local.db`
-- `DATABASE_AUTH_TOKEN` — required for remote Turso databases; not needed for local SQLite
-- `PUBLIC_SUPABASE_URL` — Supabase project URL
-- `PUBLIC_SUPABASE_PUBLISHABLE_KEY` — Supabase anon key
-- `SECRET_STRIPE_KEY` — Stripe secret key
-- `PUBLIC_FRONTEND_URL` — public base URL used by Stripe redirects
-- Optional email: `RESEND_API_KEY`, `EMAIL_FROM`
-- Optional OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+Both files contain the app's Better Auth, database, Supabase, Stripe, email,
+and optional OAuth settings. Keep frontend-public variables limited to values
+intended for browsers; secrets must not use a `PUBLIC_` prefix.
 
 ## Database
 

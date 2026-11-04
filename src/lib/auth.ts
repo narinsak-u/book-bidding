@@ -56,9 +56,7 @@ export const auth = betterAuth({
         genericOAuth({
             config: [{
                 providerId: "central-identity",
-                discoveryUrl: env.CENTRAL_OIDC_ISSUER
-                    ? `${env.CENTRAL_OIDC_ISSUER}/.well-known/openid-configuration`
-                    : "https://auth.127.0.0.1.nip.io/api/auth/.well-known/openid-configuration",
+                discoveryUrl: `${env.CENTRAL_OIDC_ISSUER}/.well-known/openid-configuration`,
                 requireIdTokenVerification: true,
                 clientId: env.CENTRAL_OIDC_CLIENT_ID ?? "",
                 clientSecret: env.CENTRAL_OIDC_CLIENT_SECRET ?? "",
