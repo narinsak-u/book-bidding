@@ -7,7 +7,7 @@ const email = import.meta.env.VITE_OIDC_TEST_EMAIL;
 const password = import.meta.env.VITE_OIDC_TEST_PASSWORD;
 
 describe.skipIf(!email || !password)('Central Identity across Book Bidding and Read in Peace', () => {
-	it('creates independent app sessions and keeps Bidding signed in after Reading sign-out', async () => {
+	it('keeps both application sessions independent of each other and Central Identity sign-out', async () => {
 		if (!email || !password) {
 			throw new Error('Set VITE_OIDC_TEST_EMAIL and VITE_OIDC_TEST_PASSWORD for the live cross-app browser test');
 		}
@@ -43,27 +43,83 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(readingSession.user.email).toBe(email);
 			expect(readingSession.session.id).not.toBe(biddingSession.session.id);
 			expect(readingSession.user.id).not.toBe(biddingSession.user.id);
+
 			const readingDashboardReady = readingPage.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await readingPage.goto(`${reading}/dashboard`);
 			await readingDashboardReady;
+			const biddingSignedOut = biddingPage.waitForResponse((response) =>
+				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
+			);
+			await biddingPage.getByRole('button', { name: 'Book Bidding sign-out' }).click();
+			await biddingSignedOut;
+			expect(await biddingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).toBeNull();
+			expect((await readingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).session.id).toBe(readingSession.session.id);
 
+			const biddingLoginReady = biddingPage.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
+			await biddingPage.goto(`${bidding}/auth/login`);
+			await biddingLoginReady;
+			await biddingPage.getByRole('button', { name: /central identity/i }).click();
+			await biddingPage.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`), { timeout: 20_000 });
+			const restoredBiddingSession = await biddingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			);
+			expect(restoredBiddingSession.user.email).toBe(email);
+
+			const centralPage = await context.newPage();
+			await centralPage.goto('https://auth.127.0.0.1.nip.io');
+			const centralSignOut = await centralPage.evaluate(async () =>
+				fetch('/api/auth/sign-out', { method: 'POST' }).then((response) => response.ok)
+			);
+			expect(centralSignOut).toBe(true);
+			expect(await centralPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).toBeNull();
+			expect((await biddingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).session.id).toBe(restoredBiddingSession.session.id);
+			expect((await readingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).session.id).toBe(readingSession.session.id);
 
 			await readingPage.getByRole('button', { name: 'Open profile menu' }).click();
-			const signedOut = readingPage.waitForResponse((response) =>
+			const readingSignedOut = readingPage.waitForResponse((response) =>
 				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
 			);
 			await readingPage.getByRole('button', { name: 'Sign out of Read in Peace' }).click();
-			await signedOut;
-			const readingAfterSignOut = await readingPage.evaluate(async () =>
+			await readingSignedOut;
+			expect(await readingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).toBeNull();
+			expect((await biddingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).session.id).toBe(restoredBiddingSession.session.id);
+
+			const biddingSignedOutAfterCentral = biddingPage.waitForResponse((response) =>
+				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
+			);
+			await biddingPage.getByRole('button', { name: 'Book Bidding sign-out' }).click();
+			await biddingSignedOutAfterCentral;
+			expect(await biddingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			)).toBeNull();
+
+			await biddingPage.getByRole('button', { name: /central identity/i }).click();
+			await biddingPage.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			await biddingPage.locator('#signin-email').waitFor({ state: 'visible' });
+			await biddingPage.locator('#signin-email').fill(email);
+			await biddingPage.locator('#signin-password').fill(password);
+			await biddingPage.locator('#signin button').click();
+			await biddingPage.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`), { timeout: 20_000 });
+			const freshBiddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			);
-			expect(readingAfterSignOut).toBeNull();
-			const biddingAfterReadingSignOut = await biddingPage.evaluate(async () =>
-				fetch('/api/auth/get-session').then((response) => response.json())
-			);
-			expect(biddingAfterReadingSignOut.session.id).toBe(biddingSession.session.id);
+			expect(freshBiddingSession.user.email).toBe(email);
 		} finally {
 			await browser.close();
 		}
-	}, 90_000);
+	}, 150_000);
 });
