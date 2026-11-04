@@ -14,15 +14,6 @@ function centralSignInForm(page: Page) {
 function isCentralIdentityOrigin(url: URL) {
 	return url.origin === centralIdentityOrigin;
 }
-function waitForSession(page: Page) {
-	return page.waitForResponse((response) => new URL(response.url()).pathname === '/api/auth/get-session');
-}
-
-async function navigateAndWaitForSession(page: Page, url: string) {
-	const ready = waitForSession(page);
-	await Promise.all([page.goto(url), ready]);
-}
-
 
 describe.skipIf(!email || !password)('Central Identity across Book Bidding and Read in Peace', () => {
 	it('keeps both application sessions independent of each other and Central Identity sign-out', async () => {
@@ -34,13 +25,11 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 		try {
 			const context = await browser.newContext({ ignoreHTTPSErrors: true });
 			const biddingPage = await context.newPage();
-			await navigateAndWaitForSession(biddingPage, `${bidding}/auth/login`);
+			await biddingPage.goto(`${bidding}/auth/login`);
 			const centralNavigation = biddingPage.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
-			const centralReady = waitForSession(biddingPage);
 			await Promise.all([
 				biddingPage.getByRole('button', { name: /central identity/i }).click(),
 				centralNavigation,
-				centralReady,
 			]);
 			const centralForm = centralSignInForm(biddingPage);
 			await centralForm.getByLabel(/email/i).fill(email);
@@ -56,21 +45,15 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(biddingSession.user.email).toBe(email);
 
 			const readingPage = await context.newPage();
-			await navigateAndWaitForSession(readingPage, `${reading}/dashboard`);
+			await readingPage.goto(`${reading}/dashboard`, { waitUntil: 'domcontentloaded' });
 			await readingPage
 				.getByRole('heading', { name: 'Sign in to see your library' })
 				.locator('..')
 				.getByRole('button', { name: 'Sign in' })
 				.click();
-			const readingNavigation = readingPage.waitForURL(
-				new RegExp(`${reading.replaceAll('.', '\\.')}/dashboard(?:\\?.*)?$`),
-				{ timeout: 20_000 },
-			);
-			const readingReady = waitForSession(readingPage);
 			await Promise.all([
 				readingPage.getByRole('dialog').getByRole('button', { name: 'Continue with Central Identity' }).click(),
-				readingNavigation,
-				readingReady,
+				readingPage.getByRole('button', { name: 'Open profile menu' }).waitFor({ state: 'visible', timeout: 20_000 }),
 			]);
 			const readingSession = await readingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
@@ -78,7 +61,6 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(readingSession.user.email).toBe(email);
 			expect(readingSession.session.id).not.toBe(biddingSession.session.id);
 			expect(readingSession.user.id).not.toBe(biddingSession.user.id);
-			await readingPage.goto(`${reading}/dashboard`);
 
 			const biddingSignedOut = biddingPage.waitForResponse((response) =>
 				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
@@ -92,7 +74,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				fetch('/api/auth/get-session').then((response) => response.json())
 			)).session.id).toBe(readingSession.session.id);
 
-			await navigateAndWaitForSession(biddingPage, `${bidding}/auth/login`);
+			await biddingPage.goto(`${bidding}/auth/login`);
 			const restoredNavigation = biddingPage.waitForURL(
 				new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`),
 				{ timeout: 20_000 },
@@ -107,7 +89,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(restoredBiddingSession.user.email).toBe(email);
 
 			const centralPage = await context.newPage();
-			await navigateAndWaitForSession(centralPage, centralIdentity);
+			await centralPage.goto(centralIdentity);
 			const centralSignOut = await centralPage.evaluate(async () =>
 				fetch('/api/auth/sign-out', { method: 'POST' }).then((response) => response.ok)
 			);
@@ -145,11 +127,9 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			)).toBeNull();
 
 			const finalCentralNavigation = biddingPage.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
-			const finalCentralReady = waitForSession(biddingPage);
 			await Promise.all([
 				biddingPage.getByRole('button', { name: /central identity/i }).click(),
 				finalCentralNavigation,
-				finalCentralReady,
 			]);
 			await centralForm.getByLabel(/email/i).waitFor({ state: 'visible' });
 			await centralForm.getByLabel(/email/i).fill(email);
@@ -167,24 +147,15 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			);
 			expect(freshBiddingSession.user.email).toBe(email);
 
-			await navigateAndWaitForSession(
-				readingPage,
-				`${reading}/dashboard?next=${encodeURIComponent('https://evil.example/steal')}`,
-			);
+			await readingPage.goto(`${reading}/dashboard?next=${encodeURIComponent('https://evil.example/steal')}`, { waitUntil: 'domcontentloaded' });
 			await readingPage
 				.getByRole('heading', { name: 'Sign in to see your library' })
 				.locator('..')
 				.getByRole('button', { name: 'Sign in' })
 				.click();
-			const hostileReadingNavigation = readingPage.waitForURL(
-				(url) => url.origin === new URL(reading).origin && url.pathname === '/dashboard',
-				{ timeout: 20_000 },
-			);
-			const hostileReadingReady = waitForSession(readingPage);
 			await Promise.all([
 				readingPage.getByRole('dialog').getByRole('button', { name: 'Continue with Central Identity' }).click(),
-				hostileReadingNavigation,
-				hostileReadingReady,
+				readingPage.getByRole('button', { name: 'Open profile menu' }).waitFor({ state: 'visible', timeout: 20_000 }),
 			]);
 			expect(new URL(readingPage.url()).origin).toBe(new URL(reading).origin);
 			expect(new URL(readingPage.url()).pathname).toBe('/dashboard');
@@ -205,14 +176,11 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				(url) => url.pathname === '/auth/login' && url.searchParams.get('next') === '/account/identity',
 				{ timeout: 20_000 },
 			);
-			const protectedReady = waitForSession(page);
-			await Promise.all([page.goto(`${bidding}/account/identity`), protectedReady, protectedNavigation]);
+			await Promise.all([page.goto(`${bidding}/account/identity`), protectedNavigation]);
 			const centralNavigation = page.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
-			const centralReady = waitForSession(page);
 			await Promise.all([
 				page.getByRole('button', { name: /central identity/i }).click(),
 				centralNavigation,
-				centralReady,
 			]);
 			const centralForm = centralSignInForm(page);
 			await centralForm.getByLabel(/email/i).fill(email!);
@@ -233,7 +201,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			)).toBeNull();
 
 			const centralPage = await context.newPage();
-			await navigateAndWaitForSession(centralPage, centralIdentity);
+			await centralPage.goto(centralIdentity);
 			const centralSignOutButton = centralPage.getByRole('button', { name: 'Sign out of Central Identity' });
 			await centralSignOutButton.waitFor({ state: 'visible' });
 			const centralSignOut = centralPage.waitForResponse((response) =>
@@ -249,18 +217,14 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				(url) => url.pathname === '/auth/login' && url.searchParams.get('next') === 'https://evil.example/steal',
 				{ timeout: 20_000 },
 			);
-			const hostileReady = waitForSession(page);
 			await Promise.all([
 				page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`),
-				hostileReady,
 				hostileNavigation,
 			]);
 			const hostileCentralNavigation = page.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
-			const hostileCentralReady = waitForSession(page);
 			await Promise.all([
 				page.getByRole('button', { name: /central identity/i }).click(),
 				hostileCentralNavigation,
-				hostileCentralReady,
 			]);
 			await centralForm.getByLabel(/email/i).fill(email!);
 			await centralForm.getByLabel(/password/i).fill(password!);
