@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from 'vitest';
+import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -7,11 +8,11 @@ const repo = mkdtempSync('/tmp/book-bidding-env-hook-');
 afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
 function run(...cmd: string[]) {
-  const result = Bun.spawnSync({
-    cmd, cwd: repo, stdout: 'pipe', stderr: 'pipe',
+  const result = spawnSync(cmd[0], cmd.slice(1), {
+    cwd: repo,
     env: { ...process.env, PATH: `${root}/node_modules/.bin:${process.env.PATH}` },
   });
-  return { code: result.exitCode, stderr: result.stderr.toString(), stdout: result.stdout.toString() };
+  return { code: result.status, stderr: result.stderr?.toString() ?? '', stdout: result.stdout?.toString() ?? '' };
 }
 
 test('commit encrypts staged env files and rejects private keys and partial edits', () => {
