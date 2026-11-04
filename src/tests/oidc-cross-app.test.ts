@@ -19,9 +19,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 		try {
 			const context = await browser.newContext({ ignoreHTTPSErrors: true });
 			const biddingPage = await context.newPage();
-			const biddingReady = biddingPage.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await biddingPage.goto(`${bidding}/auth/login`);
-			await biddingReady;
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
 			await biddingPage.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
 			const centralForm = centralSignInForm(biddingPage);
@@ -35,9 +33,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(biddingSession.user.email).toBe(email);
 
 			const readingPage = await context.newPage();
-			const readingReady = readingPage.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await readingPage.goto(`${reading}/dashboard`);
-			await readingReady;
 			await readingPage.getByRole('button', { name: 'Sign in', exact: true }).first().click();
 			await readingPage.getByRole('dialog').getByRole('button', { name: 'Continue with Central Identity' }).click();
 			await readingPage.waitForURL(new RegExp(`${reading.replaceAll('.', '\\.')}/?$`), { timeout: 20_000 });
@@ -47,10 +43,8 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(readingSession.user.email).toBe(email);
 			expect(readingSession.session.id).not.toBe(biddingSession.session.id);
 			expect(readingSession.user.id).not.toBe(biddingSession.user.id);
-
-			const readingDashboardReady = readingPage.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await readingPage.goto(`${reading}/dashboard`);
-			await readingDashboardReady;
+
 			const biddingSignedOut = biddingPage.waitForResponse((response) =>
 				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
 			);
@@ -63,9 +57,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				fetch('/api/auth/get-session').then((response) => response.json())
 			)).session.id).toBe(readingSession.session.id);
 
-			const biddingLoginReady = biddingPage.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await biddingPage.goto(`${bidding}/auth/login`);
-			await biddingLoginReady;
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
 			await biddingPage.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`), { timeout: 20_000 });
 			const restoredBiddingSession = await biddingPage.evaluate(async () =>
