@@ -1,13 +1,13 @@
+import { loginPath } from "$lib/server/login-path";
 import { db } from "$lib/server/db";
 import { redirect } from "@sveltejs/kit";
 import { getImage } from "../../helpers";
 import type { PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
     const user = await locals.user;
     if (!user?.id) {
-        redirect(302, '/auth/login')
-        // return { books: [], stats: {} };
+        redirect(302, loginPath(url));
     }
 
     // get ended auctions

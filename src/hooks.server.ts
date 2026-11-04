@@ -1,6 +1,4 @@
 import { auth } from "$lib/auth"; // path to your auth file
-import { svelteKitHandler } from "better-auth/svelte-kit";
-import { building } from '$app/environment'
 import type { Handle } from "@sveltejs/kit";
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -13,5 +11,6 @@ export const handle: Handle = async ({ event, resolve }) => {
         event.locals.session = session.session;
         event.locals.user = session.user;
     }
-    return svelteKitHandler({ event, resolve, auth, building });
+    // Caddy terminates TLS; Vite sees HTTP while Better Auth's public origin is HTTPS.
+    return event.url.pathname.startsWith('/api/auth/') ? auth.handler(event.request) : resolve(event);
 }
