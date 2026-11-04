@@ -7,10 +7,10 @@ import { auth } from '$lib/auth';
 import { deleteFile, uploadFile } from '../../shared/helpers';
 import { getImage } from '../../../helpers';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, url }) => {
   const userId = locals.user?.id;
   if (!userId) {
-    redirect(302, '/login');
+    redirect(302, `/auth/login?next=${encodeURIComponent(url.pathname + url.search)}`);
   }
 
   const auctionId = params.auctionId;

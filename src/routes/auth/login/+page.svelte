@@ -3,6 +3,9 @@
   import AuthForm from "$lib/components/AuthForm.svelte";
   import { env as publicEnv } from "$env/dynamic/public";
 
+  import type { PageProps } from "./$types";
+
+  let { data }: PageProps = $props();
   let loading = $state(false);
   let providerLoading: null | "google" | "github" | "central-identity" = $state(null);
   const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL || "https://auth.127.0.0.1.nip.io";
@@ -14,7 +17,7 @@
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: provider === "central-identity" ? "/dashboard" : "/",
+        callbackURL: provider === "central-identity" ? data.callbackURL : "/",
       });
     } catch (e) {
       console.error("Sign in with provider failed:", e);

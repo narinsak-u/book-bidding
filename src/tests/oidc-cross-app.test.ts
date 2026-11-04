@@ -122,4 +122,29 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			await browser.close();
 		}
 	}, 150_000);
+	it('restores protected destinations and rejects hostile return targets', async () => {
+		const browser = await chromium.launch();
+		try {
+			const page = await browser.newPage({ ignoreHTTPSErrors: true });
+			const identityReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
+			await page.goto(`${bidding}/account/identity`);
+			await identityReady;
+			await page.getByRole('button', { name: /central identity/i }).click();
+			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			await page.getByLabel(/email/i).fill(email!);
+			await page.getByLabel(/password/i).fill(password!);
+			await page.getByRole('button', { name: /sign in/i }).click();
+			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/account/identity(?:\\?.*)?$`), { timeout: 20_000 });
+
+			await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
+			await page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`);
+			await page.getByRole('button', { name: /central identity/i }).click();
+			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard(?:\\?.*)?$`), { timeout: 20_000 });
+			expect(new URL(page.url()).origin).toBe(new URL(bidding).origin);
+			expect(new URL(page.url()).pathname).toBe('/dashboard');
+		} finally {
+			await browser.close();
+		}
+	}, 90_000);
+
 });

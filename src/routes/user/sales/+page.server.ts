@@ -3,11 +3,10 @@ import { redirect } from "@sveltejs/kit";
 import { getImage } from "../../helpers";
 import type { PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
     const user = await locals.user;
     if (!user?.id) {
-        redirect(302, '/auth/login')
-        // return { books: [], stats: {} };
+        redirect(302, `/auth/login?next=${encodeURIComponent(url.pathname + url.search)}`);
     }
 
     // get ended auctions
