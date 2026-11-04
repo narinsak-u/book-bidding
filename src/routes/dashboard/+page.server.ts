@@ -1,3 +1,4 @@
+import { loginPath } from "$lib/server/login-path";
 import { db } from "$lib/server/db";
 import { redirect, type Actions } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
@@ -10,7 +11,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
     // get user from locals
     if (!locals.user?.id) {
-        redirect(302, `/auth/login?next=${encodeURIComponent(url.pathname + url.search)}`);
+        redirect(302, loginPath(url));
     }
 
     // get user's books
