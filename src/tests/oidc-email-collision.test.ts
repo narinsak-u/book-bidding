@@ -42,9 +42,9 @@ describe.skipIf(!email || !centralPassword || !localPassword)('Book Bidding OIDC
 			await ready;
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-			await page.locator('#signin-email').fill(email);
-			await page.locator('#signin-password').fill(centralPassword);
-			await page.locator('#signin button').click();
+			await page.getByLabel('Email address').fill(email);
+			await page.getByLabel('Password').fill(centralPassword);
+			await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 			await expect.poll(() => new URL(page.url()).origin).toBe(new URL(app).origin);
 			const unauthenticated = await page.evaluate(() =>
 				fetch('/api/auth/get-session').then((response) => response.json())

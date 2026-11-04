@@ -38,10 +38,10 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				await accountsReady;
 				await page.getByRole('button', { name: /link central identity/i }).click();
 				await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-				await page.locator('#signin-email').fill(centralEmail);
-				await page.locator('#signin-password').fill(`${centralPassword}-wrong`);
-				await page.locator('#signin button').click();
-				await page.getByRole('status').getByText(/request failed/i).waitFor();
+				await page.getByLabel('Email address').fill(centralEmail);
+				await page.getByLabel('Password').fill(`${centralPassword}-wrong`);
+				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+				await page.getByRole('alert').getByText(/did not match/i).waitFor();
 				const retryReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/list-accounts'));
 				await page.goto(`${app}/account/identity`);
 				await retryReady;
@@ -52,9 +52,9 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 
 				await page.getByRole('button', { name: /link central identity/i }).click();
 				await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-				await page.locator('#signin-email').fill(centralEmail);
-				await page.locator('#signin-password').fill(centralPassword);
-				await page.locator('#signin button').click();
+				await page.getByLabel('Email address').fill(centralEmail);
+				await page.getByLabel('Password').fill(centralPassword);
+				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 				await page.waitForURL(/\/account\/identity/, { timeout: 20_000 });
 				await page.getByText(/identity linked/i).waitFor();
 				const linkedSession = await page.evaluate(() =>
@@ -70,9 +70,9 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				await signedOutReady;
 				await page.getByRole('button', { name: /central identity/i }).click();
 				await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-				await page.locator('#signin-email').fill(centralEmail);
-				await page.locator('#signin-password').fill(centralPassword);
-				await page.locator('#signin button').click();
+				await page.getByLabel('Email address').fill(centralEmail);
+				await page.getByLabel('Password').fill(centralPassword);
+				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 				await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
 				const signedInSession = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())

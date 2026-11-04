@@ -17,9 +17,9 @@ describe.skipIf(!email && !password)('Book Bidding OIDC login over the public br
 			await hydrated;
 			await page.getByRole('button', { name: /central identity/i }).click();
 			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
-			await page.locator('#signin-email').fill(email);
-			await page.locator('#signin-password').fill(password);
-			await page.locator('#signin button').click();
+			await page.getByLabel('Email address').fill(email);
+			await page.getByLabel('Password').fill(password);
+			await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 			await page.waitForURL(/bidding\.127\.0\.0\.1\.sslip\.io\/dashboard/, { timeout: 20_000 });
 			await page.getByRole('heading', { name: /dashboard/i }).waitFor({ timeout: 10_000 });
 			const localSession = await page.evaluate(async () =>
