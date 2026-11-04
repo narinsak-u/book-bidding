@@ -3,10 +3,16 @@ import { describe, expect, it } from 'vitest';
 
 const bidding = import.meta.env.VITE_OIDC_TEST_APP ?? 'https://bidding.127.0.0.1.sslip.io';
 const reading = import.meta.env.VITE_OIDC_TEST_READING_APP ?? 'https://reading.lvh.me';
+const centralIdentity = import.meta.env.VITE_OIDC_TEST_CENTRAL_IDENTITY ?? 'https://auth.127.0.0.1.nip.io';
+const centralIdentityOrigin = new URL(centralIdentity).origin;
 const email = import.meta.env.VITE_OIDC_TEST_EMAIL;
 const password = import.meta.env.VITE_OIDC_TEST_PASSWORD;
 function centralSignInForm(page: Page) {
 	return page.locator('form').filter({ hasText: /sign in/i });
+}
+
+function isCentralIdentityOrigin(url: URL) {
+	return url.origin === centralIdentityOrigin;
 }
 
 describe.skipIf(!email || !password)('Central Identity across Book Bidding and Read in Peace', () => {
@@ -21,7 +27,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			const biddingPage = await context.newPage();
 			await biddingPage.goto(`${bidding}/auth/login`);
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
-			await biddingPage.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			await biddingPage.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
 			const centralForm = centralSignInForm(biddingPage);
 			await centralForm.getByLabel(/email/i).fill(email);
 			await centralForm.getByLabel(/password/i).fill(password);
@@ -66,7 +72,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(restoredBiddingSession.user.email).toBe(email);
 
 			const centralPage = await context.newPage();
-			await centralPage.goto('https://auth.127.0.0.1.nip.io');
+			await centralPage.goto(centralIdentity);
 			const centralSignOut = await centralPage.evaluate(async () =>
 				fetch('/api/auth/sign-out', { method: 'POST' }).then((response) => response.ok)
 			);
@@ -104,7 +110,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			)).toBeNull();
 
 			await biddingPage.getByRole('button', { name: /central identity/i }).click();
-			await biddingPage.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			await biddingPage.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
 			await centralForm.getByLabel(/email/i).waitFor({ state: 'visible' });
 			await centralForm.getByLabel(/email/i).fill(email);
 			await centralForm.getByLabel(/password/i).fill(password);
@@ -129,7 +135,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				{ timeout: 20_000 },
 			);
 			await page.getByRole('button', { name: /central identity/i }).click();
-			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			await page.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
 			const centralForm = centralSignInForm(page);
 			await centralForm.getByLabel(/email/i).fill(email!);
 			await centralForm.getByLabel(/password/i).fill(password!);
@@ -146,7 +152,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			)).toBeNull();
 
 			const centralPage = await context.newPage();
-			await centralPage.goto('https://auth.127.0.0.1.nip.io');
+			await centralPage.goto(centralIdentity);
 			const centralSignOutButton = centralPage.getByRole('button', { name: 'Sign out of Central Identity' });
 			await centralSignOutButton.waitFor({ state: 'visible' });
 			const centralSignOut = centralPage.waitForResponse((response) =>
@@ -154,13 +160,13 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			);
 			await centralSignOutButton.click();
 			await centralSignOut;
-			await centralPage.waitForText('Central SSO Session ended');
+			await centralPage.getByText('Central SSO Session ended', { exact: true }).waitFor({ state: 'visible' });
 			expect(await centralPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			)).toBeNull();
 			await page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`);
 			await page.getByRole('button', { name: /central identity/i }).click();
-			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			await page.waitForURL(isCentralIdentityOrigin, { timeout: 20_000 });
 			await centralForm.getByLabel(/email/i).fill(email!);
 			await centralForm.getByLabel(/password/i).fill(password!);
 			await centralForm.getByRole('button', { name: /sign in/i }).click();
