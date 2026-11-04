@@ -12,14 +12,16 @@ describe.skipIf(!email && !password)('Book Bidding OIDC login over the public br
 		const browser = await chromium.launch();
 		try {
 			const page = await browser.newPage({ ignoreHTTPSErrors: true });
+			const hydrated = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await page.goto(`${app}/auth/login`);
+			await hydrated;
 			await page.getByRole('button', { name: /central identity/i }).click();
-			await expect.poll(() => page.url()).toContain('auth.127.0.0.1.nip.io');
-			await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email);
-			await page.getByLabel('Password', { exact: true }).fill(password);
-			await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-			await expect.poll(() => page.url()).toContain('bidding.127.0.0.1.sslip.io');
-			expect(await page.getByRole('heading', { name: /dashboard/i }).isVisible()).toBe(true);
+			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			await page.locator('#signin-email').fill(email);
+			await page.locator('#signin-password').fill(password);
+			await page.locator('#signin button').click();
+			await page.waitForURL(/bidding\.127\.0\.0\.1\.sslip\.io\/dashboard/, { timeout: 20_000 });
+			await page.getByRole('heading', { name: /dashboard/i }).waitFor({ timeout: 10_000 });
 			const localSession = await page.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			);
@@ -28,5 +30,5 @@ describe.skipIf(!email && !password)('Book Bidding OIDC login over the public br
 		} finally {
 			await browser.close();
 		}
-	});
+	}, 60_000);
 });

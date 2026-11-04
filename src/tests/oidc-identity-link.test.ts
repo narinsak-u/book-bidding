@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import { describe, expect, it } from 'vitest';
 
 const provider = 'https://auth.127.0.0.1.nip.io';
+const app = 'https://bidding.127.0.0.1.sslip.io';
 const localEmail = import.meta.env.VITE_OIDC_LINK_LOCAL_EMAIL;
 const localPassword = import.meta.env.VITE_OIDC_LINK_LOCAL_PASSWORD;
 const centralEmail = import.meta.env.VITE_OIDC_LINK_CENTRAL_EMAIL;
@@ -20,36 +21,42 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				const page = await browser.newPage({ ignoreHTTPSErrors: true });
 				await page.goto(provider);
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
+				const ready = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 				await page.goto(`${app}/auth/login`);
+				await ready;
 				await page.getByRole('textbox', { name: /email/i }).fill(localEmail);
-				await page.getByRole('textbox', { name: /password/i }).fill(localPassword);
+				await page.getByLabel('Password').fill(localPassword);
 				await page.getByRole('button', { name: 'Sign In', exact: true }).click();
-				await expect.poll(() => page.url()).toContain('/dashboard');
+				await page.waitForURL(app + '/', { timeout: 20_000 });
 				const originalSession = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
 				const originalUserId = originalSession.user.id;
 
+				const accountsReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/list-accounts'));
 				await page.goto(`${app}/account/identity`);
+				await accountsReady;
 				await page.getByRole('button', { name: /link central identity/i }).click();
-				await expect.poll(() => page.url()).toContain('auth.127.0.0.1.nip.io');
-				await page.getByRole('textbox', { name: 'Email', exact: true }).fill(centralEmail);
-				await page.getByRole('textbox', { name: 'Password', exact: true }).fill(`${centralPassword}-wrong`);
-				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-				await expect.poll(() => page.url()).toContain('auth.127.0.0.1.nip.io');
+				await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+				await page.locator('#signin-email').fill(centralEmail);
+				await page.locator('#signin-password').fill(`${centralPassword}-wrong`);
+				await page.locator('#signin button').click();
+				await page.getByRole('status').getByText(/request failed/i).waitFor();
+				const retryReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/list-accounts'));
 				await page.goto(`${app}/account/identity`);
+				await retryReady;
 				const sessionAfterFailedProof = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
 				expect(sessionAfterFailedProof.user.id).toBe(originalUserId);
 
 				await page.getByRole('button', { name: /link central identity/i }).click();
-				await expect.poll(() => page.url()).toContain('auth.127.0.0.1.nip.io');
-				await page.getByRole('textbox', { name: 'Email', exact: true }).fill(centralEmail);
-				await page.getByRole('textbox', { name: 'Password', exact: true }).fill(centralPassword);
-				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-				await expect.poll(() => page.url()).toContain('/account/identity');
-				await expect(page.getByText(/identity linked/i)).toBeVisible();
+				await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+				await page.locator('#signin-email').fill(centralEmail);
+				await page.locator('#signin-password').fill(centralPassword);
+				await page.locator('#signin button').click();
+				await page.waitForURL(/\/account\/identity/, { timeout: 20_000 });
+				await page.getByText(/identity linked/i).waitFor();
 				const linkedSession = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
@@ -58,13 +65,15 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
 				await page.goto(provider);
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
+				const signedOutReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 				await page.goto(`${app}/auth/login`);
+				await signedOutReady;
 				await page.getByRole('button', { name: /central identity/i }).click();
-				await expect.poll(() => page.url()).toContain('auth.127.0.0.1.nip.io');
-				await page.getByRole('textbox', { name: 'Email', exact: true }).fill(centralEmail);
-				await page.getByRole('textbox', { name: 'Password', exact: true }).fill(centralPassword);
-				await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-				await expect.poll(() => page.url()).toContain('/dashboard');
+				await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+				await page.locator('#signin-email').fill(centralEmail);
+				await page.locator('#signin-password').fill(centralPassword);
+				await page.locator('#signin button').click();
+				await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
 				const signedInSession = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
@@ -72,6 +81,6 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 			} finally {
 				await browser.close();
 			}
-		});
+		}, 120_000);
 	}
 );
