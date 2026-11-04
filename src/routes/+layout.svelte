@@ -18,7 +18,7 @@
   const siteUrl = dev ? PUBLIC_BASE_URL : PUBLIC_FRONTEND_URL;
   const siteName = "Book Bidding";
   const siteDesc = "Premium book auction platform for collectors.";
-  const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL || "https://auth.127.0.0.1.nip.io";
+  const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL;
   let signOutError = $state("");
 
   async function signOutOfBidding() {
@@ -148,9 +148,11 @@
                 {data.user?.name || "Username"}
               </span>
             </div>
-            <a href={centralIdentityUrl} class="text-sm text-foreground hover:text-primary">
-              Central sign-out
-            </a>
+            {#if centralIdentityUrl}
+              <a href={centralIdentityUrl} class="text-sm text-foreground hover:text-primary">
+                Central sign-out
+              </a>
+            {/if}
             <button
               onclick={signOutOfBidding}
               class="px-4 font-koulen cursor-pointer py-2 text-foreground hover:bg-red-900/30 rounded-lg transition"
@@ -341,12 +343,14 @@
         {/if}
         <div class="mt-4">
           {#if data.sessionId}
-            <a
-              href={centralIdentityUrl}
-              class="block w-full py-3 px-2 text-foreground hover:bg-muted font-koulen"
-            >
-              Manage Central Identity / sign out centrally
-            </a>
+            {#if centralIdentityUrl}
+              <a
+                href={centralIdentityUrl}
+                class="block w-full py-3 px-2 text-foreground hover:bg-muted font-koulen"
+              >
+                Manage Central Identity / sign out centrally
+              </a>
+            {/if}
             <button
               onclick={signOutOfBidding}
               class="w-full cursor-pointer py-3 px-2 rounded-lg text-foreground hover:bg-red-900/30 bg-red-900/50 transition font-koulen"
