@@ -23,6 +23,7 @@ async function navigateAndWaitForSession(page: Page, url: string) {
 	await Promise.all([page.goto(url), ready]);
 }
 
+
 describe.skipIf(!email || !password)('Central Identity across Book Bidding and Read in Peace', () => {
 	it('keeps both application sessions independent of each other and Central Identity sign-out', async () => {
 		if (!email || !password) {
@@ -48,8 +49,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`),
 				{ timeout: 20_000 },
 			);
-			const biddingReady = waitForSession(biddingPage);
-			await Promise.all([centralForm.getByRole('button', { name: /sign in/i }).click(), biddingNavigation, biddingReady]);
+			await Promise.all([centralForm.getByRole('button', { name: /sign in/i }).click(), biddingNavigation]);
 			const biddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
 			);
@@ -78,7 +78,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			expect(readingSession.user.email).toBe(email);
 			expect(readingSession.session.id).not.toBe(biddingSession.session.id);
 			expect(readingSession.user.id).not.toBe(biddingSession.user.id);
-			await navigateAndWaitForSession(readingPage, `${reading}/dashboard`);
+			await readingPage.goto(`${reading}/dashboard`);
 
 			const biddingSignedOut = biddingPage.waitForResponse((response) =>
 				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
@@ -97,11 +97,9 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`),
 				{ timeout: 20_000 },
 			);
-			const restoredReady = waitForSession(biddingPage);
 			await Promise.all([
 				biddingPage.getByRole('button', { name: /central identity/i }).click(),
 				restoredNavigation,
-				restoredReady,
 			]);
 			const restoredBiddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
@@ -160,11 +158,9 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard`),
 				{ timeout: 20_000 },
 			);
-			const finalBiddingReady = waitForSession(biddingPage);
 			await Promise.all([
 				centralForm.getByRole('button', { name: /sign in/i }).click(),
 				finalBiddingNavigation,
-				finalBiddingReady,
 			]);
 			const freshBiddingSession = await biddingPage.evaluate(async () =>
 				fetch('/api/auth/get-session').then((response) => response.json())
@@ -192,6 +188,10 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			]);
 			expect(new URL(readingPage.url()).origin).toBe(new URL(reading).origin);
 			expect(new URL(readingPage.url()).pathname).toBe('/dashboard');
+			const hostileReadingSession = await readingPage.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			);
+			expect(hostileReadingSession.user.email).toBe(email);
 		} finally {
 			await browser.close();
 		}
@@ -221,8 +221,7 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				new RegExp(`${bidding.replaceAll('.', '\\.')}/account/identity(?:\\?.*)?$`),
 				{ timeout: 20_000 },
 			);
-			const appReady = waitForSession(page);
-			await Promise.all([centralForm.getByRole('button', { name: /sign in/i }).click(), appNavigation, appReady]);
+			await Promise.all([centralForm.getByRole('button', { name: /sign in/i }).click(), appNavigation]);
 
 			const localSignOut = page.waitForResponse((response) =>
 				response.url().endsWith('/api/auth/sign-out') && response.request().method() === 'POST'
@@ -269,10 +268,13 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 				new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard(?:\\?.*)?$`),
 				{ timeout: 20_000 },
 			);
-			const hostileAppReady = waitForSession(page);
-			await Promise.all([centralForm.getByRole('button', { name: /sign in/i }).click(), hostileAppNavigation, hostileAppReady]);
+			await Promise.all([centralForm.getByRole('button', { name: /sign in/i }).click(), hostileAppNavigation]);
 			expect(new URL(page.url()).origin).toBe(new URL(bidding).origin);
 			expect(new URL(page.url()).pathname).toBe('/dashboard');
+			const hostileBiddingSession = await page.evaluate(async () =>
+				fetch('/api/auth/get-session').then((response) => response.json())
+			);
+			expect(hostileBiddingSession.user.email).toBe(email);
 		} finally {
 			await browser.close();
 		}
