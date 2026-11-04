@@ -40,7 +40,7 @@
 	{#if linked}
 		<p role="status" class="mt-6">Identity linked to this Application User.</p>
 	{/if}
-	{#if data.linkError}
+	{#if data.linkError && !linked}
 		<p role="alert" class="mt-6 text-red-700">Central Identity could not be linked. If it is already linked to another Application User, stop and request reviewed recovery; do not create another account.</p>
 	{/if}
 	{#if !linked}
