@@ -87,6 +87,13 @@ describe.skipIf(!email || !password)('Invited Central Identity public HTTPS jour
 
 			const readingPage = await context.newPage();
 			const readingPath = '/dashboard';
+			let centralPasswordPromptShown = false;
+			readingPage.on('framenavigated', (frame) => {
+				const url = new URL(frame.url());
+				if (frame === readingPage.mainFrame() && url.origin === new URL(provider).origin && url.pathname === '/sign-in') {
+					centralPasswordPromptShown = true;
+				}
+			});
 			await readingPage.goto(`${reading}${readingPath}`, { waitUntil: 'domcontentloaded' });
 			await readingPage.getByRole('heading', { name: 'Sign in to see your library' }).locator('..').getByRole('button', { name: 'Sign in' }).click();
 			await readingPage.getByRole('dialog').getByRole('button', { name: 'Continue with Central Identity' }).click();
@@ -94,7 +101,7 @@ describe.skipIf(!email || !password)('Invited Central Identity public HTTPS jour
 			expect(new URL(readingPage.url()).origin).toBe(new URL(reading).origin);
 			expect(new URL(readingPage.url()).pathname).toBe(readingPath);
 			expect(await readingPage.getByRole('heading', { name: 'Sign in to see your library' }).count()).toBe(0);
-			expect(await readingPage.getByLabel('Email address').count()).toBe(0);
+			expect(centralPasswordPromptShown).toBe(false);
 			const readingSession = await readingPage.evaluate(() => fetch('/api/auth/get-session').then((response) => response.json()));
 			expect(readingSession.user.email).toBe(email);
 			expect(readingSession.session.id).not.toBe(biddingSession.session.id);
