@@ -19,7 +19,7 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 			const browser = await chromium.launch();
 			try {
 				const page = await browser.newPage({ ignoreHTTPSErrors: true });
-				await page.goto(provider);
+				await page.goto(`${provider}/sign-in`);
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
 				const ready = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 				await page.goto(`${app}/auth/login`);
@@ -63,7 +63,7 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				expect(linkedSession.user.id).toBe(originalUserId);
 
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
-				await page.goto(provider);
+				await page.goto(`${provider}/sign-in`);
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
 				const signedOutReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 				await page.goto(`${app}/auth/login`);

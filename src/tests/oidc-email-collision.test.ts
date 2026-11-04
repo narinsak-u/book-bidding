@@ -35,7 +35,7 @@ describe.skipIf(!email || !centralPassword || !localPassword)('Book Bidding OIDC
 			const originalUserId = localUser.user.id;
 
 			await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
-			await page.goto(provider);
+			await page.goto(`${provider}/sign-in`);
 			await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
 			const ready = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await page.goto(`${app}/auth/login`);
