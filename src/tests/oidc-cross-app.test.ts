@@ -129,7 +129,8 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 	it('restores protected destinations and rejects hostile return targets', async () => {
 		const browser = await chromium.launch();
 		try {
-			const page = await browser.newPage({ ignoreHTTPSErrors: true });
+			const context = await browser.newContext({ ignoreHTTPSErrors: true });
+			const page = await context.newPage();
 			const identityReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/get-session'));
 			await page.goto(`${bidding}/account/identity`);
 			await identityReady;
@@ -141,9 +142,21 @@ describe.skipIf(!email || !password)('Central Identity across Book Bidding and R
 			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/account/identity(?:\\?.*)?$`), { timeout: 20_000 });
 
-			await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
+			const centralPage = await context.newPage();
+			await centralPage.goto('https://auth.127.0.0.1.nip.io');
+			const centralSessionEnded = await centralPage.evaluate(async () => {
+				const response = await fetch('/api/auth/sign-out', { method: 'POST' });
+				if (!response.ok) return false;
+				return await fetch('/api/auth/get-session').then((session) => session.json()) === null;
+			});
+			expect(centralSessionEnded).toBe(true);
 			await page.goto(`${bidding}/auth/login?next=${encodeURIComponent('https://evil.example/steal')}`);
 			await page.getByRole('button', { name: /central identity/i }).click();
+			await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
+			const centralForm = centralSignInForm(page);
+			await centralForm.getByLabel(/email/i).fill(email!);
+			await centralForm.getByLabel(/password/i).fill(password!);
+			await centralForm.getByRole('button', { name: /sign in/i }).click();
 			await page.waitForURL(new RegExp(`${bidding.replaceAll('.', '\\.')}/dashboard(?:\\?.*)?$`), { timeout: 20_000 });
 			expect(new URL(page.url()).origin).toBe(new URL(bidding).origin);
 			expect(new URL(page.url()).pathname).toBe('/dashboard');
