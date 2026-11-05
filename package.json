@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "dotenvx run --strict --overload -f .env.development -- vite dev",
-    "build": "dotenvx run --strict --overload -f .env.production -- vite build",
+    "build": "if [ -n \"${VERCEL:-}\" ]; then vite build; else dotenvx run --strict --overload -f .env.production -- vite build; fi",
     "preview": "dotenvx run --strict --overload -f .env.production -- vite preview",
     "prepare": "svelte-kit sync || echo ''; husky",
     "check": "dotenvx run --strict --overload -f .env.development -- svelte-kit sync && dotenvx run --strict --overload -f .env.development -- svelte-check --tsconfig ./tsconfig.json",
