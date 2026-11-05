@@ -24,26 +24,41 @@ An auction platform built with SvelteKit 5. Users create book auctions, upload c
 
 ## Setup
 
-Install dependencies and keep the dotenvx key from the provider outside Git.
-Encrypted `.env.development` and `.env.production` are loaded explicitly:
+Install dependencies and keep the dotenvx private key outside Git. Development
+uses encrypted `.env.development`; production-like local runs use a separate
+encrypted `.env.test-production`. Never use live `.env.production` for
+`dev:prod`.
 
 ```sh
 bun install
-bun run dev
-bun run check
-bun run test
-bun run build && bun run preview
+bun run dev        # development on :5173
+# After creating separate encrypted test-production credentials:
+bun run dev:prod   # production-mode preview on :5174
 ```
 
-`bun run dev`, checks, tests, and database commands load `.env.development`.
-Build and preview load `.env.production`. Create/update config with dotenvx
-(`bunx dotenvx encrypt -f .env.development` or `-f .env.production`); never
-commit `.env.keys`. Back up the private key securely. Do not copy development
-settings into production or add production credentials until provisioned.
+`dev` serves Vite on `5173`; the HTTPS gateway exposes
+`https://bidding.127.0.0.1.sslip.io:8080` and Central Identity on
+`https://auth.127.0.0.1.nip.io:8080`. `dev:prod` builds a production bundle
+from `.env.test-production` and serves it with Vite preview on `5174`. It uses
+`https://bidding-test.127.0.0.1.sslip.io:8081` plus the test-prefixed Central
+issuer. Its `DATABASE_URL` must use `file:local-test-production.db`; this
+keeps test data apart from `local.db`. Startup initializes the schema only
+when that isolated database file does not exist. Create `.env.test-production`
+from `.env.test-production.example`, then provision its own confidential OIDC
+client and app credentials before starting.
 
-Both files contain the app's Better Auth, database, Supabase, Stripe, email,
-and optional OAuth settings. Keep frontend-public variables limited to values
-intended for browsers; secrets must not use a `PUBLIC_` prefix.
+Checks, tests, and database commands load `.env.development`. Build and preview
+load `.env.production`; `dev:prod` never does. Use `bun run env:encrypt` and
+`bun run env:decrypt` for development, or `bun run env:encrypt:test-production`
+and `bun run env:decrypt:test-production` for isolated test credentials. Back
+up `.env.keys` and `.env.test-production.keys` outside Git. The pre-commit
+hook rejects private keys and unencrypted staged environment values.
+
+All configuration files contain the app's Better Auth, database, Supabase,
+Stripe, email, and optional OAuth settings. Keep frontend-public variables
+limited to values intended for browsers; secrets must not use a `PUBLIC_`
+prefix.
+
 
 ## Database
 
@@ -65,7 +80,7 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Central Identity OIDC
 
-The local demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io/api/auth` with callback `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+The local dev demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io:8080/api/auth` with callback `https://bidding.127.0.0.1.sslip.io:8080/api/auth/callback/central-identity`. Production-like local mode uses its test-prefixed HTTPS origins on port `8081`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
 
 For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register only this exact HTTPS callback at Central Identity, replacing the placeholder with that supplied host:
 
@@ -83,31 +98,18 @@ The server config pins the provider redirect URI to `<BETTER_AUTH_URL>/api/auth/
 Peace and Central Identity remain signed in. **Central sign-out** (also
 accessible from the sign-in page) opens the provider page set by
 `PUBLIC_CENTRAL_IDENTITY_URL`; choose **Sign out of Central Identity** there
-to end only the Central SSO Session. A later fresh OIDC authorization requires
-provider credentials, while existing app sessions remain usable until each
-app ends them or they expire.
+to end only the Central SSO Session. A later fresh OIDC authorization returns
+to Central sign-in; Google or GitHub may still retain a separate provider
+session. Existing app sessions remain usable until each app ends them or they
+expire.
 
-For the complete local TLS and operator-only confidential-client provisioning sequence, follow **Book Bidding OIDC demo** in the sibling `book-auth-middleware` README. Keep Supabase/Stripe values in the encrypted `.env.development` file (not an ignored `.env`); its dotenvx private key belongs in `.env.keys` outside Git. The repository hook encrypts staged environment changes. Put the one-time OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Keep the secret private. Initialize the local SQLite schema with `bun run db:push`; then start the app with `NODE_EXTRA_CA_CERTS=../book-auth-middleware/central-identity-root.crt bun run dev -- --host 0.0.0.0` behind the auth repo's Caddy TLS proxy.
+For local TLS, confidential-client provisioning, and browser checks, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md). Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. The hook encrypts staged environment changes. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed; root `dev` starts the app behind the HTTPS gateway.
 
-The live browser test uses a newly verified central test identity with no existing Book Bidding user:
-
-```sh
-NODE_EXTRA_CA_CERTS=../book-auth-middleware/central-identity-root.crt VITE_OIDC_TEST_EMAIL='new-address@example.test' VITE_OIDC_TEST_PASSWORD='the verified identity password' bun run test:unit -- --run src/tests/oidc-login.test.ts
-```
-
-For the separate same-email protection test, verify a Central Identity that has no Book Bidding user yet. The test creates that ordinary local password user through the public auth endpoint, attempts Central sign-in using the same email, then signs back in locally and confirms the Application User ID is unchanged:
-
-```sh
-VITE_OIDC_CONFLICT_EMAIL='existing-user@example.test' VITE_OIDC_CONFLICT_PASSWORD='verified central password' VITE_OIDC_LOCAL_PASSWORD='local app password' npm run test:unit -- --run src/tests/oidc-email-collision.test.ts
-```
+The old browser tests relied on Central Identity email/password sign-in and were removed with that login method. For manual public HTTPS proof, use a real verified Google or GitHub account and the Caddy CA. Start at a protected Book Bidding page, choose **Continue with Central Identity**, and complete provider sign-in. Confirm the browser returns to the original destination with an independent Application Session. With a separate local Book Bidding user of the same email, confirm Central sign-in does not claim that user.
 
 To link an existing legacy Application User, sign in with its existing password or social provider and choose **Identity Link** in the signed-in navigation. The protected page starts Better Auth's explicit `linkSocial` flow; authenticate separately at Central Identity. The Central Identity can use a different verified email. A failed or conflicting link does not change the local user; conflicting identities require reviewed recovery.
 
-The opt-in live browser journey signs in with both credentials, links Central Identity, then signs out and confirms a later Central Identity sign-in selects the original Application User:
-
-```sh
-NODE_EXTRA_CA_CERTS=../book-auth-middleware/central-identity-root.crt VITE_OIDC_LINK_LOCAL_EMAIL='legacy-user@example.test' VITE_OIDC_LINK_LOCAL_PASSWORD='legacy app password' VITE_OIDC_LINK_CENTRAL_EMAIL='different-address@example.test' VITE_OIDC_LINK_CENTRAL_PASSWORD='verified central password' bun run test:unit -- --run src/tests/oidc-identity-link.test.ts
-```
+To test explicit linking, sign in as an existing Book Bidding user, choose **Identity Link**, and prove control of a Central Identity through Google or GitHub. The provider may use a different verified email. Sign out locally, then sign in through Central Identity again; confirm the original Book Bidding user and its data remain unchanged.
 
 ## Image Upload
 

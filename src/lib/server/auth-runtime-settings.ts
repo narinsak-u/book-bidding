@@ -1,6 +1,6 @@
 import { env } from "$env/dynamic/private";
 
-const localIssuer = "https://auth.127.0.0.1.nip.io/api/auth";
+const localIssuer = "https://auth.127.0.0.1.nip.io:8080/api/auth";
 
 function required(name: string): string {
 	const value = env[name]?.trim();
