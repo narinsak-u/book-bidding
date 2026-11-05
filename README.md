@@ -14,8 +14,7 @@ An auction platform built with SvelteKit 5. Users create book auctions, upload c
 - Vitest for tests
 
 ## Features
-
-- Authentication: Email/password login, optional Google/GitHub signup
+- Authentication: Central Identity OIDC login; legacy Book Bidding accounts use Reviewed Recovery to link.
 - Auctions: Create/edit with image upload
 - Bidding: Real-time updates via Server-Sent Events (SSE)
 - My Bids: Separated Active and Ended sections
@@ -74,9 +73,9 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Auth
 
-- Server: `src/lib/auth.ts` enables email/password. `src/hooks.server.ts` mounts Better Auth and populates `event.locals.user`/`session`.
-- Client: `src/lib/auth-client.ts` provides `authClient` for login and social sign-in.
-- OAuth: Email/password, Google, GitHub, and Central Identity sign-in are configured in `src/lib/auth.ts`; see the OIDC setup below for confidential-client provisioning and the exact HTTPS callback.
+- Server: `src/lib/auth.ts` disables local password and provider sign-in. `src/hooks.server.ts` mounts Better Auth and populates `event.locals.user`/`session`.
+- Client: `src/lib/auth-client.ts` starts Central Identity OIDC login; normal authentication uses the Relying Party authorization flow.
+- OAuth: Only Central Identity is configured for normal sign-in. Google/GitHub clients are restricted to migration-only recovery; see OIDC setup for confidential-client provisioning and the exact HTTPS callback.
 
 ## Central Identity OIDC
 
@@ -106,11 +105,9 @@ expire.
 
 For local TLS, confidential-client provisioning, and browser checks, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md). Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. The hook encrypts staged environment changes. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed; root `dev` starts the app behind the HTTPS gateway.
 
-The old browser tests relied on Central Identity email/password sign-in and were removed with that login method. For manual public HTTPS proof, use a real verified Google or GitHub account and the Caddy CA. Start at a protected Book Bidding page, choose **Continue with Central Identity**, and complete provider sign-in. Confirm the browser returns to the original destination with an independent Application Session. With a separate local Book Bidding user of the same email, confirm Central sign-in does not claim that user.
+For manual public HTTPS proof, trust the Caddy CA and open a protected Book Bidding page. The app starts Central Identity authorization automatically; complete provider sign-in and confirm the browser returns to the original destination with an independent Application Session. A matching email must not claim an unlinked local account; that owner must use Reviewed Recovery.
 
-To link an existing legacy Application User, sign in with its existing password or social provider and choose **Identity Link** in the signed-in navigation. The protected page starts Better Auth's explicit `linkSocial` flow; authenticate separately at Central Identity. The Central Identity can use a different verified email. A failed or conflicting link does not change the local user; conflicting identities require reviewed recovery.
-
-To test explicit linking, sign in as an existing Book Bidding user, choose **Identity Link**, and prove control of a Central Identity through Google or GitHub. The provider may use a different verified email. Sign out locally, then sign in through Central Identity again; confirm the original Book Bidding user and its data remain unchanged.
+To link a legacy Application User, use Reviewed Recovery at `/account/identity/recovery`. It proves control of the existing local password or its already-linked Google/GitHub account, then verifies a Central Identity separately. Recovery creates no Application Session and changes no user or business data.
 
 ### Reviewed Recovery (no Application Session)
 
