@@ -25,10 +25,9 @@ it("pins the standard OIDC callback to the configured Vercel host", () => {
 	);
 });
 
-it("uses the recovery-only callback configured for the OIDC client", () => {
-	expect(getAuthRuntimeSettings(true).recoveryOIDCRedirectURI).toBe(
-		"https://bidding.example.test/api/identity-recovery/callback",
-	);
+it("allows production startup without migration-only recovery callbacks", () => {
+	delete runtimeEnv.BIDDING_RECOVERY_OIDC_REDIRECT_URI;
+	expect(getAuthRuntimeSettings(true).recoveryOIDCRedirectURI).toBeUndefined();
 });
 it("reads synthetic private env at runtime for production settings", () => {
 	runtimeEnv.CENTRAL_OIDC_CLIENT_ID = "vercel-runtime-client-id";
@@ -48,7 +47,7 @@ it("rejects a recovery callback outside the exact app callback URL", () => {
 	expect(() => getAuthRuntimeSettings(true)).toThrow("BIDDING_RECOVERY_OIDC_REDIRECT_URI must match the app recovery callback");
 });
 
-it.each(Object.keys(productionSettings))("rejects missing production %s", (name) => {
+it.each(Object.keys(productionSettings).filter((name) => name !== "BIDDING_RECOVERY_OIDC_REDIRECT_URI"))("rejects missing production %s", (name) => {
 	delete runtimeEnv[name];
 	expect(() => getAuthRuntimeSettings(true)).toThrow(`Missing required production environment variable: ${name}`);
 });

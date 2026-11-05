@@ -1,15 +1,17 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import * as oidc from "openid-client";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { dev } from "$app/environment";
 import { PUBLIC_BASE_URL } from "$env/static/public";
 import { env } from "$env/dynamic/private";
 import { auth } from "$lib/auth";
 import { getAuthRuntimeSettings } from "$lib/server/auth-runtime-settings";
 import { db } from "$lib/server/db";
-import { account, user } from "$lib/server/db/schema";
+import { account, user, verification } from "$lib/server/db/schema";
 
 const recoveryLifetimeMs = 10 * 60 * 1000;
+const passwordProofLimit = 5;
+const passwordProofWindowMs = 15 * 60 * 1000;
 const settings = getAuthRuntimeSettings(!dev, PUBLIC_BASE_URL);
 const providerClients = new Map<"google" | "github", Promise<oidc.Configuration>>();
 let clientConfiguration: Promise<oidc.Configuration> | undefined;
@@ -90,12 +92,29 @@ async function startCentralAuthorization(userId: string, challenge: string) {
 }
 
 export async function beginRecovery(email: string, password: string) {
+	const normalizedEmail = email.trim().toLowerCase();
+	const identifier = `identity-recovery:password-proof:${createHash("sha256").update(normalizedEmail).digest("hex")}`;
+	const now = new Date();
+	const [attempt] = await db.insert(verification).values({
+		id: identifier,
+		identifier,
+		value: "1",
+		expiresAt: new Date(now.getTime() + passwordProofWindowMs),
+	}).onConflictDoUpdate({
+		target: verification.id,
+		set: {
+			value: sql`case when ${verification.expiresAt} > ${now.getTime()} then cast(${verification.value} as integer) + 1 else 1 end`,
+			expiresAt: new Date(now.getTime() + passwordProofWindowMs),
+		},
+	}).returning({ value: verification.value });
+	if (Number(attempt?.value ?? 0) > passwordProofLimit) throw new Error("RECOVERY_PROOF_INVALID");
 	const context = await auth.$context;
-	const [localUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, email.trim().toLowerCase())).limit(1);
+	const [localUser] = await db.select({ id: user.id }).from(user).where(eq(user.email, normalizedEmail)).limit(1);
 	const credential = localUser ? await context.internalAdapter.findCredentialAccount(localUser.id) : null;
 	if (!localUser || !credential?.password || !await context.password.verify({ hash: credential.password, password })) {
 		throw new Error("RECOVERY_PROOF_INVALID");
 	}
+	await db.delete(verification).where(eq(verification.id, identifier));
 	return startCentralAuthorization(localUser.id, randomUUID());
 }
 

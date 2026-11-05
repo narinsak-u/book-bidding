@@ -13,11 +13,15 @@ vi.mock("$lib/server/identity-recovery", () => ({
 	finishProviderRecovery,
 	finishRecovery,
 }));
+vi.mock("../lib/server/auth-runtime-settings", () => ({
+	getAuthRuntimeSettings: () => ({ sessionSecret: "synthetic-session-secret" }),
+}));
 
 import { POST } from "../routes/api/identity-recovery/+server";
 import { GET } from "../routes/api/identity-recovery/callback/+server";
 import { POST as beginProvider } from "../routes/api/identity-recovery/provider/+server";
 import { GET as finishProvider } from "../routes/api/identity-recovery/provider/callback/+server";
+import { load as recoveryPageLoad } from "../routes/account/identity/recovery/+page.server";
 import { load as identityLinkLoad } from "../routes/account/identity/+page.server";
 
 afterEach(() => vi.clearAllMocks());
@@ -93,7 +97,7 @@ it("starts provider recovery only for a supported existing provider", async () =
 });
 it("redirects after Central Identity proof without issuing an Application Session", async () => {
 	finishRecovery.mockResolvedValueOnce(undefined);
-	const cookies = { get: () => "challenge", delete: vi.fn() };
+	const cookies = { get: () => "challenge", delete: vi.fn(), set: vi.fn() };
 	let result: unknown;
 	try {
 		await GET({
@@ -105,8 +109,19 @@ it("redirects after Central Identity proof without issuing an Application Sessio
 		result = error;
 	}
 
-	expect(result).toMatchObject({ status: 303, location: "/account/identity/recovery?complete=1" });
+	expect(result).toMatchObject({ status: 303, location: "/account/identity/recovery" });
 	expect(cookies.delete).toHaveBeenCalledWith("bidding_identity_recovery", { path: "/api/identity-recovery" });
+	expect(cookies.set).toHaveBeenCalledWith(
+		"bidding_identity_recovery_complete",
+		expect.any(String),
+		expect.objectContaining({ httpOnly: true, maxAge: 60 }),
+	);
+	const proof = cookies.set.mock.calls[0][1];
+	const loaded = await recoveryPageLoad({
+		locals: {},
+		cookies: { get: () => proof, delete: vi.fn() },
+	} as never);
+	expect(loaded).toEqual({ complete: true });
 });
 it("keeps the existing Identity Link page available to a valid Application Session", async () => {
 	const result = await identityLinkLoad({
@@ -115,6 +130,14 @@ it("keeps the existing Identity Link page available to a valid Application Sessi
 	} as never);
 
 	expect(result).toEqual({ linkError: false });
+});
+it("does not trust a forged recovery completion query", async () => {
+	const result = await recoveryPageLoad({
+		locals: {},
+		url: new URL("https://bidding.example.test/account/identity/recovery?complete=1"),
+		cookies: { get: vi.fn(() => undefined), delete: vi.fn() },
+	} as never);
+	expect(result).toEqual({ complete: false });
 });
 it("starts provider proof with a short-lived HttpOnly recovery cookie", async () => {
 	beginProviderRecovery.mockResolvedValueOnce({

@@ -31,5 +31,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     }
 
     if (locals.session) redirect(302, callbackURL);
-    return { callbackURL, error: url.searchParams.has("error") };
+    return {
+        callbackURL,
+        error: url.searchParams.has("error"),
+        manual: url.searchParams.has("manual"),
+    };
 };
