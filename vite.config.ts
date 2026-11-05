@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	envDir: false,
 	plugins: [tailwindcss(), sveltekit()],
 	server: { allowedHosts: ['bidding.127.0.0.1.sslip.io'] },
 	test: {
