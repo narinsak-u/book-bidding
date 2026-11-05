@@ -28,7 +28,7 @@
       return;
     }
     openDrawer = false;
-    await goto("/auth/login", { invalidateAll: true });
+    await goto("/auth/login?manual=1", { invalidateAll: true });
   }
 </script>
 

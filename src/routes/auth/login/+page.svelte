@@ -14,7 +14,7 @@
       await authClient.signIn.social({
         provider: "central-identity",
         callbackURL: data.callbackURL,
-        errorCallbackURL: "/auth/login?error=central-identity",
+        errorCallbackURL: `/auth/login?${new URLSearchParams({ error: "central-identity", next: data.callbackURL })}`,
       });
     } catch {
       error = true;
@@ -23,7 +23,7 @@
   }
 
   onMount(() => {
-    if (!data.error) void signIn();
+    if (!data.error && !data.manual) void signIn();
   });
 </script>
 

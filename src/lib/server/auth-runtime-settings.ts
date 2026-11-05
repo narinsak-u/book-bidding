@@ -10,11 +10,12 @@ function required(name: string): string {
 
 export function getAuthRuntimeSettings(production: boolean, localBaseUrl?: string) {
 	if (production) {
-		const appOrigin = required("BETTER_AUTH_URL");
-		const recoveryOIDCRedirectURI = required("BIDDING_RECOVERY_OIDC_REDIRECT_URI");
-		const expectedRecoveryURI = new URL("/api/identity-recovery/callback", appOrigin).toString();
-		if (recoveryOIDCRedirectURI !== expectedRecoveryURI) {
-			throw new Error("BIDDING_RECOVERY_OIDC_REDIRECT_URI must match the app recovery callback");
+		const recoveryOIDCRedirectURI = env.BIDDING_RECOVERY_OIDC_REDIRECT_URI?.trim();
+		if (recoveryOIDCRedirectURI) {
+			const expectedRecoveryURI = new URL("/api/identity-recovery/callback", appOrigin).toString();
+			if (recoveryOIDCRedirectURI !== expectedRecoveryURI) {
+				throw new Error("BIDDING_RECOVERY_OIDC_REDIRECT_URI must match the app recovery callback");
+			}
 		}
 		return {
 			appOrigin,
