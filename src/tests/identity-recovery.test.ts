@@ -57,7 +57,7 @@ it("fails closed on a conflicting Identity Link without creating an Application 
 	const response = await GET({
 		request: new Request("https://bidding.example.test/api/identity-recovery/callback?state=one-time"),
 		url: new URL("https://bidding.example.test/api/identity-recovery/callback?state=one-time"),
-		cookies: { get: () => "challenge" },
+		cookies: { get: () => "challenge", delete: vi.fn() },
 	} as never);
 
 	expect(response.status).toBe(409);
