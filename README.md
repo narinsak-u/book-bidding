@@ -24,28 +24,26 @@ An auction platform built with SvelteKit 5. Users create book auctions, upload c
 
 ## Setup
 
+Install dependencies and keep the dotenvx key from the provider outside Git.
+Encrypted `.env.development` and `.env.production` are loaded explicitly:
+
 ```sh
-npm install
-npm run dev
-npm run check        # type check
-npm run test         # unit tests
-npm run build && npm run preview
+bun install
+bun run dev
+bun run check
+bun run test
+bun run build && bun run preview
 ```
 
-## Environment
+`bun run dev`, checks, tests, and database commands load `.env.development`.
+Build and preview load `.env.production`. Create/update config with dotenvx
+(`bunx dotenvx encrypt -f .env.development` or `-f .env.production`); never
+commit `.env.keys`. Back up the private key securely. Do not copy development
+settings into production or add production credentials until provisioned.
 
-Set in `.env` (private) or `.env.local`:
-
-- `BETTER_AUTH_SECRET` — long random secret
-- `BETTER_AUTH_URL` — app base URL (e.g. http://localhost:5173)
-- `DATABASE_URL` — LibSQL URL; local SQLite uses `file:local.db`
-- `DATABASE_AUTH_TOKEN` — required for remote Turso databases; not needed for local SQLite
-- `PUBLIC_SUPABASE_URL` — Supabase project URL
-- `PUBLIC_SUPABASE_PUBLISHABLE_KEY` — Supabase anon key
-- `SECRET_STRIPE_KEY` — Stripe secret key
-- `PUBLIC_FRONTEND_URL` — public base URL used by Stripe redirects
-- Optional email: `RESEND_API_KEY`, `EMAIL_FROM`
-- Optional OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+Both files contain the app's Better Auth, database, Supabase, Stripe, email,
+and optional OAuth settings. Keep frontend-public variables limited to values
+intended for browsers; secrets must not use a `PUBLIC_` prefix.
 
 ## Database
 
@@ -67,7 +65,19 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Central Identity OIDC
 
-The app uses Better Auth Generic OAuth against the central issuer `https://auth.127.0.0.1.nip.io/api/auth`. The exact registered callback is `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+The local demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io/api/auth` with callback `https://bidding.127.0.0.1.sslip.io/api/auth/callback/central-identity`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+
+For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register only this exact HTTPS callback at Central Identity, replacing the placeholder with that supplied host:
+
+```text
+https://<bidding-host>/api/auth/callback/central-identity
+```
+
+Configure the Central Identity issuer as `<real-issuer-origin>/api/auth`. Put the provider-issued client ID and secret in the encrypted `.env.production` configuration and separately enter them in Vercel **Project Settings → Environment Variables** for the Production environment. Set these private Vercel runtime variables to the matching values from `.env.production`: `BETTER_AUTH_URL`, `CENTRAL_OIDC_ISSUER`, `CENTRAL_OIDC_CLIENT_ID`, `CENTRAL_OIDC_CLIENT_SECRET`, and `BETTER_AUTH_SECRET`. `BETTER_AUTH_URL` is the `https://<bidding-host>` app origin. Also set `PUBLIC_FRONTEND_URL` to the same origin and `PUBLIC_CENTRAL_IDENTITY_URL` to the provider's HTTPS origin as public build-time values; keep both represented in `.env.production`. The login page shows its local demo credentials only during development.
+
+The app reads the private values through SvelteKit's `$env/dynamic/private` inside server code, so Vercel Functions receive them at runtime; no `.env.keys` decryption key or decrypted env file is needed in the build or Function. The committed `.env.production` remains encrypted, with its private key kept outside Git and Vercel artifacts. Keep the Vercel Production settings in sync with it when rotating credentials. Do not use local `.nip.io`/`.sslip.io` values in production or configure a registration until the real hostname is known.
+
+The server config pins the provider redirect URI to `<BETTER_AUTH_URL>/api/auth/callback/central-identity`. Check the private runtime settings contract, issuer, callback host, and missing-secret failure with `bun run test:unit -- --run src/tests/auth-runtime-settings.test.ts`; this synthetic test does not verify values saved in Vercel or the live callback.
 
 **Book Bidding sign-out** ends only this app's Application Session; Read in
 Peace and Central Identity remain signed in. **Central sign-out** (also
@@ -77,7 +87,7 @@ to end only the Central SSO Session. A later fresh OIDC authorization requires
 provider credentials, while existing app sessions remain usable until each
 app ends them or they expire.
 
-For the complete local TLS and operator-only confidential-client provisioning sequence, follow **Book Bidding OIDC demo** in the sibling `book-auth-middleware` README. Copy `.env.example` to ignored `.env`, use real Supabase/Stripe project credentials for those unrelated app features, and put the one-time OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Keep the secret private. Initialize the local SQLite schema with `bun run db:push`; then start the app with `NODE_EXTRA_CA_CERTS=../book-auth-middleware/central-identity-root.crt bun run dev -- --host 0.0.0.0` behind the auth repo's Caddy TLS proxy.
+For the complete local TLS and operator-only confidential-client provisioning sequence, follow **Book Bidding OIDC demo** in the sibling `book-auth-middleware` README. Keep Supabase/Stripe values in the encrypted `.env.development` file (not an ignored `.env`); its dotenvx private key belongs in `.env.keys` outside Git. The repository hook encrypts staged environment changes. Put the one-time OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Keep the secret private. Initialize the local SQLite schema with `bun run db:push`; then start the app with `NODE_EXTRA_CA_CERTS=../book-auth-middleware/central-identity-root.crt bun run dev -- --host 0.0.0.0` behind the auth repo's Caddy TLS proxy.
 
 The live browser test uses a newly verified central test identity with no existing Book Bidding user:
 
@@ -117,6 +127,5 @@ SSE at `routes/api/realtime/bids` streams bid events. Client store in `src/lib/s
 
 ## Deployment
 
-- Set `BETTER_AUTH_URL` and `PUBLIC_FRONTEND_URL` to your domain.
-- Configure your SvelteKit adapter.
-- Ensure all environment variables are set on the host.
+- Book Bidding is configured for `@sveltejs/adapter-vercel`. Production issuer, client credentials, `BETTER_AUTH_URL`, and `BETTER_AUTH_SECRET` must be present as private Vercel runtime variables; auth initialization rejects missing or blank values instead of falling back to local demo hosts.
+- Follow **Central Identity OIDC** above for the exact production callback and the separate encrypted configuration/Vercel runtime setup. Live Vercel and callback verification require the operator's real hostname, project access, and credentials.

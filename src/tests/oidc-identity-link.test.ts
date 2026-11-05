@@ -1,8 +1,8 @@
 import { chromium } from 'playwright';
 import { describe, expect, it } from 'vitest';
 
-const provider = 'https://auth.127.0.0.1.nip.io';
-const app = 'https://bidding.127.0.0.1.sslip.io';
+const provider = import.meta.env.VITE_OIDC_TEST_CENTRAL_IDENTITY ?? 'https://auth.127.0.0.1.nip.io';
+const app = import.meta.env.VITE_OIDC_TEST_APP ?? 'https://bidding.127.0.0.1.sslip.io';
 const localEmail = import.meta.env.VITE_OIDC_LINK_LOCAL_EMAIL;
 const localPassword = import.meta.env.VITE_OIDC_LINK_LOCAL_PASSWORD;
 const centralEmail = import.meta.env.VITE_OIDC_LINK_CENTRAL_EMAIL;
@@ -31,8 +31,7 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				const originalSession = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
-				const originalUserId = originalSession.user.id;
-
+				const originalUser = originalSession.user;
 				const accountsReady = page.waitForResponse((response) => response.url().endsWith('/api/auth/list-accounts'));
 				await page.goto(`${app}/account/identity`);
 				await accountsReady;
@@ -48,7 +47,9 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				const sessionAfterFailedProof = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
-				expect(sessionAfterFailedProof.user.id).toBe(originalUserId);
+				expect(sessionAfterFailedProof.user.id).toBe(originalUser.id);
+				expect(sessionAfterFailedProof.user.email).toBe(originalUser.email);
+				expect(sessionAfterFailedProof.user.name).toBe(originalUser.name);
 
 				await page.getByRole('button', { name: /link central identity/i }).click();
 				await page.waitForURL(/auth\.127\.0\.0\.1\.nip\.io/, { timeout: 20_000 });
@@ -60,8 +61,9 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				const linkedSession = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
-				expect(linkedSession.user.id).toBe(originalUserId);
-
+				expect(linkedSession.user.id).toBe(originalUser.id);
+				expect(linkedSession.user.email).toBe(originalUser.email);
+				expect(linkedSession.user.name).toBe(originalUser.name);
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
 				await page.goto(`${provider}/sign-in`);
 				await page.evaluate(() => fetch('/api/auth/sign-out', { method: 'POST' }));
@@ -77,7 +79,9 @@ describe.skipIf(!localEmail || !localPassword || !centralEmail || !centralPasswo
 				const signedInSession = await page.evaluate(() =>
 					fetch('/api/auth/get-session').then((response) => response.json())
 				);
-				expect(signedInSession.user.id).toBe(originalUserId);
+				expect(signedInSession.user.id).toBe(originalUser.id);
+				expect(signedInSession.user.email).toBe(originalUser.email);
+				expect(signedInSession.user.name).toBe(originalUser.name);
 			} finally {
 				await browser.close();
 			}
