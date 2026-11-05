@@ -10,6 +10,7 @@ function required(name: string): string {
 
 export function getAuthRuntimeSettings(production: boolean, localBaseUrl?: string) {
 	if (production) {
+		const appOrigin = required("BETTER_AUTH_URL");
 		const recoveryOIDCRedirectURI = env.BIDDING_RECOVERY_OIDC_REDIRECT_URI?.trim();
 		if (recoveryOIDCRedirectURI) {
 			const expectedRecoveryURI = new URL("/api/identity-recovery/callback", appOrigin).toString();
