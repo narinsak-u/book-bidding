@@ -1,8 +1,8 @@
 import { chromium } from 'playwright';
 import { describe, expect, it } from 'vitest';
 
-const provider = 'https://auth.127.0.0.1.nip.io';
-const app = 'https://bidding.127.0.0.1.sslip.io';
+const provider = import.meta.env.VITE_OIDC_TEST_CENTRAL_IDENTITY ?? 'https://auth.127.0.0.1.nip.io';
+const app = import.meta.env.VITE_OIDC_TEST_APP ?? 'https://bidding.127.0.0.1.sslip.io';
 const localEmail = import.meta.env.VITE_OIDC_LINK_LOCAL_EMAIL;
 const localPassword = import.meta.env.VITE_OIDC_LINK_LOCAL_PASSWORD;
 const centralEmail = import.meta.env.VITE_OIDC_LINK_CENTRAL_EMAIL;

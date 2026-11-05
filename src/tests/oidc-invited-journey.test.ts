@@ -75,7 +75,9 @@ describe.skipIf(!email || !password)('Invited Central Identity public HTTPS jour
 				return response.json();
 			}, { email: collisionEmail, password: legacyPassword });
 			const legacyUserId = legacyUser.user.id;
+			const accountsReady = legacyPage.waitForResponse((response) => response.url().endsWith('/api/auth/list-accounts'));
 			await legacyPage.goto(`${bidding}/account/identity`);
+			await accountsReady;
 			await legacyPage.getByRole('button', { name: /link central identity/i }).click();
 			await legacyPage.waitForURL((url) => url.origin === new URL(bidding).origin && url.pathname === '/account/identity' && url.searchParams.has('error'), { timeout: 20_000 });
 			await legacyPage.getByRole('alert').getByText(/already linked/i).waitFor();
