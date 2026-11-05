@@ -57,6 +57,7 @@ export const auth = betterAuth({
             config: [{
                 providerId: "central-identity",
                 discoveryUrl: `${settings.issuer}/.well-known/openid-configuration`,
+                redirectURI: settings.centralIdentityCallbackURL,
                 requireIdTokenVerification: true,
                 clientId: settings.clientId,
                 clientSecret: settings.clientSecret,

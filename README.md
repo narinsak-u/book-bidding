@@ -77,6 +77,8 @@ Configure the Central Identity issuer as `<real-issuer-origin>/api/auth`. Put th
 
 The app reads the private values through SvelteKit's `$env/dynamic/private` inside server code, so Vercel Functions receive them at runtime; no `.env.keys` decryption key or decrypted env file is needed in the build or Function. The committed `.env.production` remains encrypted, with its private key kept outside Git and Vercel artifacts. Keep the Vercel Production settings in sync with it when rotating credentials. Do not use local `.nip.io`/`.sslip.io` values in production or configure a registration until the real hostname is known.
 
+The server config pins the provider redirect URI to `<BETTER_AUTH_URL>/api/auth/callback/central-identity`. Check the private runtime settings contract, issuer, callback host, and missing-secret failure with `bun run test:unit -- --run src/tests/auth-runtime-settings.test.ts`; this synthetic test does not verify values saved in Vercel or the live callback.
+
 **Book Bidding sign-out** ends only this app's Application Session; Read in
 Peace and Central Identity remain signed in. **Central sign-out** (also
 accessible from the sign-in page) opens the provider page set by

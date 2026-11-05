@@ -18,12 +18,18 @@ beforeEach(() => {
 	Object.assign(runtimeEnv, productionSettings);
 });
 
+it("pins the production OIDC callback to the configured Vercel host", () => {
+	expect(getAuthRuntimeSettings(true).centralIdentityCallbackURL).toBe(
+		"https://bidding.example.test/api/auth/callback/central-identity",
+	);
+});
 it("reads synthetic private env at runtime for production settings", () => {
 	runtimeEnv.CENTRAL_OIDC_CLIENT_ID = "vercel-runtime-client-id";
 
 	expect(getAuthRuntimeSettings(true)).toEqual({
 		appOrigin: "https://bidding.example.test",
 		issuer: "https://identity.example.test/api/auth",
+		centralIdentityCallbackURL: "https://bidding.example.test/api/auth/callback/central-identity",
 		clientId: "vercel-runtime-client-id",
 		clientSecret: "synthetic-client-secret",
 		sessionSecret: "synthetic-session-secret",
