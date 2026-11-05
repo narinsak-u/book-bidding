@@ -148,6 +148,10 @@
       </div>
 
       <AuthForm />
+      <p class="mt-4 text-center text-sm text-muted-foreground">
+        Already have an unlinked Book Bidding account?
+        <a href="/account/identity/recovery" class="text-primary underline">Recover its Identity Link</a>
+      </p>
 
       <div class="mt-6 text-center">
         <p class="text-muted-foreground text-sm">
