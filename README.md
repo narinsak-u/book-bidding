@@ -14,8 +14,7 @@ An auction platform built with SvelteKit 5. Users create book auctions, upload c
 - Vitest for tests
 
 ## Features
-
-- Authentication: Email/password login, optional Google/GitHub signup
+- Authentication: Central Identity OIDC login; legacy Book Bidding accounts use Reviewed Recovery to link.
 - Auctions: Create/edit with image upload
 - Bidding: Real-time updates via Server-Sent Events (SSE)
 - My Bids: Separated Active and Ended sections
@@ -74,21 +73,22 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Auth
 
-- Server: `src/lib/auth.ts` enables email/password. `src/hooks.server.ts` mounts Better Auth and populates `event.locals.user`/`session`.
-- Client: `src/lib/auth-client.ts` provides `authClient` for login and social sign-in.
-- OAuth: Email/password, Google, GitHub, and Central Identity sign-in are configured in `src/lib/auth.ts`; see the OIDC setup below for confidential-client provisioning and the exact HTTPS callback.
+- Server: `src/lib/auth.ts` disables local password and provider sign-in. `src/hooks.server.ts` mounts Better Auth and populates `event.locals.user`/`session`.
+- Client: `src/lib/auth-client.ts` starts Central Identity OIDC login; normal authentication uses the Relying Party authorization flow.
+- OAuth: Only Central Identity is configured for normal sign-in. Google/GitHub clients are restricted to migration-only recovery; see OIDC setup for confidential-client provisioning and the exact HTTPS callback.
 
 ## Central Identity OIDC
 
-The local dev demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io:8080/api/auth` with callback `https://bidding.127.0.0.1.sslip.io:8080/api/auth/callback/central-identity`. Production-like local mode uses its test-prefixed HTTPS origins on port `8081`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+The local dev demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io:8080/api/auth` with callback `https://bidding.127.0.0.1.sslip.io:8080/api/auth/callback/central-identity`. Recovery uses `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/callback`; its Google/GitHub proof clients use `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/provider/callback`. Production-like local mode uses its test-prefixed HTTPS origins on port `8081`, with `/api/auth/callback/central-identity`, `/api/identity-recovery/callback`, and `/api/identity-recovery/provider/callback`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
 
-For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register only this exact HTTPS callback at Central Identity, replacing the placeholder with that supplied host:
+For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register both exact HTTPS callbacks at Central Identity, replacing the placeholder with that supplied host:
 
 ```text
 https://<bidding-host>/api/auth/callback/central-identity
+https://<bidding-host>/api/identity-recovery/callback
 ```
 
-Configure the Central Identity issuer as `<real-issuer-origin>/api/auth`. Put the provider-issued client ID and secret in the encrypted `.env.production` configuration and separately enter them in Vercel **Project Settings → Environment Variables** for the Production environment. Set these private Vercel runtime variables to the matching values from `.env.production`: `BETTER_AUTH_URL`, `CENTRAL_OIDC_ISSUER`, `CENTRAL_OIDC_CLIENT_ID`, `CENTRAL_OIDC_CLIENT_SECRET`, and `BETTER_AUTH_SECRET`. `BETTER_AUTH_URL` is the `https://<bidding-host>` app origin. Also set `PUBLIC_FRONTEND_URL` to the same origin and `PUBLIC_CENTRAL_IDENTITY_URL` to the provider's HTTPS origin as public build-time values; keep both represented in `.env.production`. The login page shows its local demo credentials only during development.
+Configure the Central Identity issuer as `<real-issuer-origin>/api/auth`. Put the provider-issued client ID and secret in the encrypted `.env.production` configuration and separately enter them in Vercel **Project Settings → Environment Variables** for the Production environment. Set these private Vercel runtime variables to the matching values from `.env.production`: `BETTER_AUTH_URL`, `CENTRAL_OIDC_ISSUER`, `CENTRAL_OIDC_CLIENT_ID`, `CENTRAL_OIDC_CLIENT_SECRET`, `BIDDING_RECOVERY_OIDC_REDIRECT_URI`, and `BETTER_AUTH_SECRET`. Set `BIDDING_RECOVERY_OIDC_REDIRECT_URI` to `https://<bidding-host>/api/identity-recovery/callback`. `BETTER_AUTH_URL` is the `https://<bidding-host>` app origin. Also set `PUBLIC_FRONTEND_URL` to the same origin and `PUBLIC_CENTRAL_IDENTITY_URL` to the provider's HTTPS origin as public build-time values; keep both represented in `.env.production`. The login page shows its local demo credentials only during development.
 
 The app reads the private values through SvelteKit's `$env/dynamic/private` inside server code, so Vercel Functions receive them at runtime; no `.env.keys` decryption key or decrypted env file is needed in the build or Function. The committed `.env.production` remains encrypted, with its private key kept outside Git and Vercel artifacts. Keep the Vercel Production settings in sync with it when rotating credentials. Do not use local `.nip.io`/`.sslip.io` values in production or configure a registration until the real hostname is known.
 
@@ -105,11 +105,22 @@ expire.
 
 For local TLS, confidential-client provisioning, and browser checks, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md). Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. The hook encrypts staged environment changes. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed; root `dev` starts the app behind the HTTPS gateway.
 
-The old browser tests relied on Central Identity email/password sign-in and were removed with that login method. For manual public HTTPS proof, use a real verified Google or GitHub account and the Caddy CA. Start at a protected Book Bidding page, choose **Continue with Central Identity**, and complete provider sign-in. Confirm the browser returns to the original destination with an independent Application Session. With a separate local Book Bidding user of the same email, confirm Central sign-in does not claim that user.
+For manual public HTTPS proof, trust the Caddy CA and open a protected Book Bidding page. The app starts Central Identity authorization automatically; complete provider sign-in and confirm the browser returns to the original destination with an independent Application Session. A matching email must not claim an unlinked local account; that owner must use Reviewed Recovery.
 
-To link an existing legacy Application User, sign in with its existing password or social provider and choose **Identity Link** in the signed-in navigation. The protected page starts Better Auth's explicit `linkSocial` flow; authenticate separately at Central Identity. The Central Identity can use a different verified email. A failed or conflicting link does not change the local user; conflicting identities require reviewed recovery.
+To link a legacy Application User, use Reviewed Recovery at `/account/identity/recovery`. It proves control of the existing local password or its already-linked Google/GitHub account, then verifies a Central Identity separately. Recovery creates no Application Session and changes no user or business data.
 
-To test explicit linking, sign in as an existing Book Bidding user, choose **Identity Link**, and prove control of a Central Identity through Google or GitHub. The provider may use a different verified email. Sign out locally, then sign in through Central Identity again; confirm the original Book Bidding user and its data remain unchanged.
+### Reviewed Recovery (no Application Session)
+
+Use this path only when the user cannot sign in with an existing Application Session. Back up the Book Bidding database and run `bun run db:push` before enabling recovery so the unique Identity Link indexes exist. Register the Central Identity callback `https://<bidding-host>/api/identity-recovery/callback` and the Google/GitHub callback `https://<bidding-host>/api/identity-recovery/provider/callback`. Production must set `BIDDING_RECOVERY_OIDC_REDIRECT_URI` to the Central Identity callback.
+
+Configure separate, migration-only Google and GitHub OAuth clients for the provider callback. Store their secrets in encrypted `.env.production` and private Vercel runtime variables as `BIDDING_RECOVERY_GOOGLE_CLIENT_ID`, `BIDDING_RECOVERY_GOOGLE_CLIENT_SECRET`, `BIDDING_RECOVERY_GITHUB_CLIENT_ID`, and `BIDDING_RECOVERY_GITHUB_CLIENT_SECRET`. Do not reuse local-login clients or expose these values to browsers. Remove the migration-only clients after recovery is no longer needed.
+
+1. Direct the user to `https://bidding.127.0.0.1.sslip.io:8080/account/identity/recovery` in development, or the matching HTTPS Book Bidding origin in production.
+2. The user proves the existing Application User with its Book Bidding password or the Google/GitHub account already linked to that user. Provider recovery validates the provider account ID against the stored link; email does not prove ownership.
+3. The browser redirects to Central Identity. The user completes normal OIDC authorization. The recovery callback validates issuer, audience, signature, nonce, state, and PKCE before reading the subject.
+4. The app links that subject to the independently proven Application User only if neither side already has an Identity Link. Conflicts stop with no changes. Recovery creates no Application Session; the user signs in normally through Central Identity afterward.
+
+The flow stores no password, access token, ID token, or new session. It changes only the Better Auth account mapping; it does not change the Application User ID, bids, purchases, or permissions. Never resolve a conflict by email, manual account merge, replacement user, or deleting records. If neither the existing password nor a previously linked provider can be proved, keep the records intact and escalate.
 
 ## Image Upload
 

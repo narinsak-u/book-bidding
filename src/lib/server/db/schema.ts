@@ -1,5 +1,5 @@
-import { integer, sqliteTable, text, index } from "drizzle-orm/sqlite-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
+import { integer, sqliteTable, text, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const timestampDefaults = {
 	createdAt: integer("created_at", { mode: "timestamp_ms" })
@@ -47,7 +47,10 @@ export const account = sqliteTable("account", {
 	scope: text("scope"),
 	password: text("password"),
 	...timestampDefaults,
-});
+}, (table) => [
+	uniqueIndex("account_central_identity_subject").on(table.accountId).where(sql`${table.providerId} = 'central-identity'`),
+	uniqueIndex("account_central_identity_user").on(table.userId).where(sql`${table.providerId} = 'central-identity'`),
+]);
 
 export const verification = sqliteTable("verification", {
 	id: text("id").primaryKey(),

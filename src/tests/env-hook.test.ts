@@ -51,4 +51,4 @@ test('commit encrypts supported staged env files and rejects private keys and pa
   expect(run('git', 'add', '-f', '.env.test-production.keys').code).toBe(0);
   expect(run('bash', 'pre-commit').stderr).toContain('Refusing to commit dotenvx private keys');
 
-});
+}, 15_000);

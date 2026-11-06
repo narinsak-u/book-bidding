@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "dotenvx run --strict --overload -f .env.development -- vite dev --host 0.0.0.0 --port 5173",
     "dev:prod": "dotenvx run --strict --overload -f .env.test-production -fk .env.test-production.keys -- sh -c 'test \"$DATABASE_URL\" = \"file:local-test-production.db\" && { if [ ! -e local-test-production.db ]; then drizzle-kit push; fi; } && vite build && vite preview --host 0.0.0.0 --port 5174'",
+    "test:oidc-browser": "bun scripts/test-oidc-browser.ts",
     "env:encrypt": "dotenvx encrypt -f .env.development -fk .env.keys",
     "env:decrypt": "dotenvx decrypt -f .env.development -fk .env.keys",
     "env:encrypt:development": "dotenvx encrypt -f .env.development -fk .env.keys",
@@ -59,6 +60,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.81.0",
     "better-auth": "1.7.15",
-    "flowbite-svelte-blocks": "^2.1.0"
+    "flowbite-svelte-blocks": "^2.1.0",
+    "openid-client": "^6.8.9"
   }
 }
