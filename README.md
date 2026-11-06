@@ -39,7 +39,7 @@ bun run dev:prod   # production-mode preview on :5174
 `https://bidding.127.0.0.1.sslip.io:8080` and Central Identity on
 `https://auth.127.0.0.1.nip.io:8080`. `dev:prod` builds a production bundle
 from `.env.test-production` and serves it with Vite preview on `5174`. It uses
-`https://bidding-test.127.0.0.1.sslip.io:8081` plus the test-prefixed Central
+`https://bidding-test.localhost:8081` plus the test-prefixed Central
 issuer. Its `DATABASE_URL` must use `file:local-test-production.db`; this
 keeps test data apart from `local.db`. Startup initializes the schema only
 when that isolated database file does not exist. Create `.env.test-production`
@@ -79,7 +79,7 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Central Identity OIDC
 
-The local dev demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io:8080/api/auth` with callback `https://bidding.127.0.0.1.sslip.io:8080/api/auth/callback/central-identity`. Recovery uses `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/callback`; its Google/GitHub proof clients use `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/provider/callback`. Production-like local mode uses its test-prefixed HTTPS origins on port `8081`, with `/api/auth/callback/central-identity`, `/api/identity-recovery/callback`, and `/api/identity-recovery/provider/callback`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+The local dev demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io:8080/api/auth` with callback `https://bidding.127.0.0.1.sslip.io:8080/api/auth/callback/central-identity`. Recovery uses `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/callback`; its Google/GitHub proof clients use `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/provider/callback`. Production-like local mode uses `https://auth-test.localhost:8081/api/auth` with sign-in callback `https://bidding-test.localhost:8081/api/auth/callback/central-identity`, recovery callback `https://bidding-test.localhost:8081/api/identity-recovery/callback`, and Google/GitHub proof callback `https://bidding-test.localhost:8081/api/identity-recovery/provider/callback`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
 
 For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register both exact HTTPS callbacks at Central Identity, replacing the placeholder with that supplied host:
 
