@@ -5,7 +5,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 export default defineConfig({
 	envDir: false,
 	plugins: [tailwindcss(), sveltekit()],
-	server: { allowedHosts: ['bidding.localhost', 'bidding-test.localhost'] },
+	server: { allowedHosts: ['bidding.localhost', 'bidding-test.localhost', 'bidding-test.127.0.0.1.sslip.io'] },
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
