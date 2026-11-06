@@ -93,7 +93,7 @@ try {
     const url = new URL(response.url());
     return url.origin === readingOrigin && url.pathname === "/api/auth/callback/central-identity";
   }, { timeout: coldStartTimeout });
-  await page.goto(readingTarget.href, { waitUntil: "domcontentloaded", timeout: coldStartTimeout });
+  await page.goto(readingTarget.href, { waitUntil: "commit", timeout: coldStartTimeout });
   const returnToReading = page.waitForEvent("framenavigated", {
     predicate: (frame) => frame === page.mainFrame() && frame.url() === readingTarget.href,
     timeout: coldStartTimeout,
