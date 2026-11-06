@@ -36,8 +36,9 @@ bun run dev:prod   # production-mode preview on :5174
 ```
 
 `dev` serves Vite on `5173`; the HTTPS gateway exposes
-`https://bidding.127.0.0.1.sslip.io:8080` and Central Identity on
-`https://auth.127.0.0.1.nip.io:8080`. `dev:prod` builds a production bundle
+`https://bidding.localhost:8080` and Central Identity on
+`https://auth.localhost:8080`. Reading is served at `https://reading.localhost:8080`.
+`dev:prod` builds a production bundle
 from `.env.test-production` and serves it with Vite preview on `5174`. It uses
 `https://bidding-test.127.0.0.1.sslip.io:8081` plus the test-prefixed Central
 issuer. Its `DATABASE_URL` must use `file:local-test-production.db`; this
@@ -79,7 +80,7 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Central Identity OIDC
 
-The local dev demo uses Better Auth Generic OAuth against `https://auth.127.0.0.1.nip.io:8080/api/auth` with callback `https://bidding.127.0.0.1.sslip.io:8080/api/auth/callback/central-identity`. Recovery uses `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/callback`; its Google/GitHub proof clients use `https://bidding.127.0.0.1.sslip.io:8080/api/identity-recovery/provider/callback`. Production-like local mode uses its test-prefixed HTTPS origins on port `8081`, with `/api/auth/callback/central-identity`, `/api/identity-recovery/callback`, and `/api/identity-recovery/provider/callback`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
+The local dev demo uses Better Auth Generic OAuth against `https://auth.localhost:8080/api/auth` with callback `https://bidding.localhost:8080/api/auth/callback/central-identity`. Recovery uses `https://bidding.localhost:8080/api/identity-recovery/callback`; its Google/GitHub proof clients use `https://bidding.localhost:8080/api/identity-recovery/provider/callback`. Production-like local mode uses its test-prefixed HTTPS origins on port `8081`, with `/api/auth/callback/central-identity`, `/api/identity-recovery/callback`, and `/api/identity-recovery/provider/callback`. These are local-only values, not production registrations. Local cookies remain secure and host-only, and provider logout does not end the local Application Session.
 
 For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register both exact HTTPS callbacks at Central Identity, replacing the placeholder with that supplied host:
 
@@ -103,9 +104,12 @@ to Central sign-in; Google or GitHub may still retain a separate provider
 session. Existing app sessions remain usable until each app ends them or they
 expire.
 
-For local TLS, confidential-client provisioning, and browser checks, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md). Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. The hook encrypts staged environment changes. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed; root `dev` starts the app behind the HTTPS gateway.
+For local TLS, confidential-client provisioning, and browser checks, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md). Development uses `https://bidding.localhost:8080` with Central Identity at `https://auth.localhost:8080/api/auth`; Reading shares the Central SSO Session at `https://reading.localhost:8080`. Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. The hook encrypts staged environment changes. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed; root `dev` starts the app behind the HTTPS gateway.
 
-For manual public HTTPS proof, trust the Caddy CA and open a protected Book Bidding page. The app starts Central Identity authorization automatically; complete provider sign-in and confirm the browser returns to the original destination with an independent Application Session. A matching email must not claim an unlinked local account; that owner must use Reviewed Recovery.
+For manual public HTTPS proof, trust the development Caddy CA in the browser and open a protected Book Bidding page. The app starts Central Identity authorization automatically; complete provider sign-in and confirm the browser returns to the original destination with an independent Application Session. A matching email must not claim an unlinked local account; that owner must use Reviewed Recovery.
+
+Run `bun run test:oidc-browser` with `BIDDING_OIDC_TEST_ORIGIN=https://bidding.localhost:8080`, `READING_OIDC_TEST_ORIGIN=https://reading.localhost:8080`, `CENTRAL_IDENTITY_TEST_ORIGIN=https://auth.localhost:8080`, and the existing `CENTRAL_IDENTITY_TEST_EMAIL` and `CENTRAL_IDENTITY_TEST_PASSWORD` test credentials. The browser journey verifies Bidding sign-in, silent Central SSO reuse on Reading, separate host-only Application Session cookies, and restoration of both protected destinations without TLS bypass.
+
 
 To link a legacy Application User, use Reviewed Recovery at `/account/identity/recovery`. It proves control of the existing local password or its already-linked Google/GitHub account, then verifies a Central Identity separately. Recovery creates no Application Session and changes no user or business data.
 
@@ -115,7 +119,7 @@ Use this path only when the user cannot sign in with an existing Application Ses
 
 Configure separate, migration-only Google and GitHub OAuth clients for the provider callback. Store their secrets in encrypted `.env.production` and private Vercel runtime variables as `BIDDING_RECOVERY_GOOGLE_CLIENT_ID`, `BIDDING_RECOVERY_GOOGLE_CLIENT_SECRET`, `BIDDING_RECOVERY_GITHUB_CLIENT_ID`, and `BIDDING_RECOVERY_GITHUB_CLIENT_SECRET`. Do not reuse local-login clients or expose these values to browsers. Remove the migration-only clients after recovery is no longer needed.
 
-1. Direct the user to `https://bidding.127.0.0.1.sslip.io:8080/account/identity/recovery` in development, or the matching HTTPS Book Bidding origin in production.
+1. Direct the user to `https://bidding.localhost:8080/account/identity/recovery` in development, or the matching HTTPS Book Bidding origin in production.
 2. The user proves the existing Application User with its Book Bidding password or the Google/GitHub account already linked to that user. Provider recovery validates the provider account ID against the stored link; email does not prove ownership.
 3. The browser redirects to Central Identity. The user completes normal OIDC authorization. The recovery callback validates issuer, audience, signature, nonce, state, and PKCE before reading the subject.
 4. The app links that subject to the independently proven Application User only if neither side already has an Identity Link. Conflicts stop with no changes. Recovery creates no Application Session; the user signs in normally through Central Identity afterward.
