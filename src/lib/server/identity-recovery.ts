@@ -12,7 +12,7 @@ import { account, user, verification } from "$lib/server/db/schema";
 const recoveryLifetimeMs = 10 * 60 * 1000;
 const passwordProofLimit = 5;
 const passwordProofWindowMs = 15 * 60 * 1000;
-const settings = getAuthRuntimeSettings(!dev, PUBLIC_BASE_URL);
+const settings = getAuthRuntimeSettings(!dev, dev ? "http://localhost:5173" : PUBLIC_BASE_URL);
 const providerClients = new Map<"google" | "github", Promise<oidc.Configuration>>();
 let clientConfiguration: Promise<oidc.Configuration> | undefined;
 

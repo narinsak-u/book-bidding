@@ -9,7 +9,7 @@ import { PUBLIC_BASE_URL, PUBLIC_FRONTEND_URL } from "$env/static/public";
 import { dev } from "$app/environment";
 import { getAuthRuntimeSettings } from "./server/auth-runtime-settings";
 
-const settings = getAuthRuntimeSettings(!dev, PUBLIC_BASE_URL);
+const settings = getAuthRuntimeSettings(!dev, dev ? "http://localhost:5173" : PUBLIC_BASE_URL);
 
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
@@ -23,9 +23,9 @@ export const auth = betterAuth({
         ? [settings.appOrigin, PUBLIC_BASE_URL, PUBLIC_FRONTEND_URL].filter(Boolean)
         : [settings.appOrigin],
     advanced: {
-        useSecureCookies: true,
+        cookiePrefix: dev ? "bidding" : "better-auth",
+        useSecureCookies: settings.appOrigin?.startsWith("https://") ?? true,
     },
-
     account: {
         accountLinking: {
             disableImplicitLinking: true,

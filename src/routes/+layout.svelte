@@ -15,10 +15,10 @@
   let open = $state(false);
   let openDrawer = $state(false);
 
-  const siteUrl = dev ? PUBLIC_BASE_URL : PUBLIC_FRONTEND_URL;
+  const siteUrl = dev ? "http://localhost:5173" : PUBLIC_FRONTEND_URL;
   const siteName = "Book Bidding";
   const siteDesc = "Premium book auction platform for collectors.";
-  const centralIdentityUrl = publicEnv.PUBLIC_CENTRAL_IDENTITY_URL;
+  const centralIdentityUrl = dev ? "https://auth.localhost:8080" : publicEnv.PUBLIC_CENTRAL_IDENTITY_URL;
   let signOutError = $state("");
 
   async function signOutOfBidding() {

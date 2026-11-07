@@ -42,9 +42,9 @@ async function waitForDisableResumeFile(path: string): Promise<void> {
   throw new Error(`Timed out waiting for ${path}`);
 }
 
-const biddingOrigin = new URL(required("BIDDING_OIDC_TEST_ORIGIN")).origin;
-const readingOrigin = new URL(required("READING_OIDC_TEST_ORIGIN")).origin;
-const identityOrigin = new URL(required("CENTRAL_IDENTITY_TEST_ORIGIN")).origin;
+const biddingOrigin = new URL(process.env.BIDDING_OIDC_TEST_ORIGIN ?? "http://localhost:5173").origin;
+const readingOrigin = new URL(process.env.READING_OIDC_TEST_ORIGIN ?? "http://localhost:3001").origin;
+const identityOrigin = new URL(process.env.CENTRAL_IDENTITY_TEST_ORIGIN ?? "https://auth.localhost:8080").origin;
 const email = required("CENTRAL_IDENTITY_TEST_EMAIL");
 const password = required("CENTRAL_IDENTITY_TEST_PASSWORD");
 const biddingDestination = process.env.BIDDING_OIDC_TEST_DESTINATION ?? "/dashboard";
@@ -71,7 +71,7 @@ try {
   const biddingSession = await page.evaluate(async () => await (await fetch("/api/auth/get-session")).json());
   assert.ok(biddingSession, "Bidding must establish an Application Session");
   const biddingCookies = await context.cookies(biddingOrigin);
-  const biddingSessionCookie = biddingCookies.find((cookie) => cookie.name.endsWith("session_token"));
+  const biddingSessionCookie = biddingCookies.find((cookie) => cookie.name.endsWith(biddingTarget.hostname === "localhost" ? "bidding.session_token" : "better-auth.session_token"));
   assert.ok(biddingSessionCookie, "Bidding must use a session cookie");
   assert.equal(biddingSessionCookie.domain, new URL(biddingOrigin).hostname, "Bidding session cookie must be host-only");
 
@@ -100,8 +100,11 @@ try {
   });
   await readingCallback;
   await returnToReading;
-  const readingSessionCookie = (await context.cookies(readingOrigin)).find((cookie) => cookie.name.endsWith("session_token"));
+  const readingSessionCookie = (await context.cookies(readingOrigin)).find((cookie) => cookie.name.endsWith(readingTarget.hostname === "localhost" ? "reading.session_token" : "better-auth.session_token"));
   assert.ok(readingSessionCookie, "Reading must use a session cookie");
+  if (readingTarget.hostname === biddingTarget.hostname) {
+    assert.notEqual(readingSessionCookie.name, biddingSessionCookie.name, "same-host Application Sessions must use different cookie names");
+  }
   await page.goto(readingTarget.href, { waitUntil: "domcontentloaded", timeout: coldStartTimeout });
   assert.equal(page.url(), readingTarget.href, "Reading must return to the original page");
   const readingSession = await page.evaluate(async () => await (await fetch("/api/auth/get-session")).json());

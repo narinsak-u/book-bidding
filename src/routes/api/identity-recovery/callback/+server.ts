@@ -24,7 +24,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	cookies.set(completionCookie, signRecoveryCompletion(getAuthRuntimeSettings(!dev, PUBLIC_BASE_URL).sessionSecret), {
 		path: "/account/identity/recovery",
 		httpOnly: true,
-		secure: !dev,
+		secure: url.protocol === "https:",
 		sameSite: "lax",
 		maxAge: 60,
 	});

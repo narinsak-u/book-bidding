@@ -36,9 +36,9 @@ export function getAuthRuntimeSettings(production: boolean, localBaseUrl?: strin
 		centralIdentityCallbackURL: appOrigin
 			? new URL("/api/auth/callback/central-identity", appOrigin).toString()
 			: undefined,
-		recoveryOIDCRedirectURI:
-			env.BIDDING_RECOVERY_OIDC_REDIRECT_URI ||
-			(appOrigin ? new URL("/api/identity-recovery/callback", appOrigin).toString() : undefined),
+		recoveryOIDCRedirectURI: appOrigin
+			? new URL("/api/identity-recovery/callback", appOrigin).toString()
+			: undefined,
 		clientId: env.CENTRAL_OIDC_CLIENT_ID || "",
 		clientSecret: env.CENTRAL_OIDC_CLIENT_SECRET || "",
 		sessionSecret: env.BETTER_AUTH_SECRET,

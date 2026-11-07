@@ -51,15 +51,15 @@ it.each(Object.keys(productionSettings).filter((name) => name !== "BIDDING_RECOV
 	delete runtimeEnv[name];
 	expect(() => getAuthRuntimeSettings(true)).toThrow(`Missing required production environment variable: ${name}`);
 });
-it("uses the local HTTPS Central Identity origin by default", () => {
+it("uses the direct HTTP Bidding origin and HTTPS Central Identity by default", () => {
 	delete runtimeEnv.CENTRAL_OIDC_ISSUER;
-	delete runtimeEnv.BIDDING_RECOVERY_OIDC_REDIRECT_URI;
+	runtimeEnv.BIDDING_RECOVERY_OIDC_REDIRECT_URI = "https://bidding.localhost:8080/api/identity-recovery/callback";
 	runtimeEnv.BETTER_AUTH_URL = "https://bidding.localhost:8080";
 
-	expect(getAuthRuntimeSettings(false)).toMatchObject({
-		appOrigin: "https://bidding.localhost:8080",
+	expect(getAuthRuntimeSettings(false, "http://localhost:5173")).toMatchObject({
+		appOrigin: "http://localhost:5173",
 		issuer: "https://auth.localhost:8080/api/auth",
-		centralIdentityCallbackURL: "https://bidding.localhost:8080/api/auth/callback/central-identity",
-		recoveryOIDCRedirectURI: "https://bidding.localhost:8080/api/identity-recovery/callback",
+		centralIdentityCallbackURL: "http://localhost:5173/api/auth/callback/central-identity",
+		recoveryOIDCRedirectURI: "http://localhost:5173/api/identity-recovery/callback",
 	});
 });
