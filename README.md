@@ -28,6 +28,11 @@ uses encrypted `.env.development`; production-like local runs use a separate
 encrypted `.env.test-production`. Never use live `.env.production` for
 `dev:prod`.
 
+Before starting Book Bidding, run `bun run dev:setup` from the sibling
+`book-auth-middleware` repository. This exports its public development CA to
+`central-identity-root.crt`; the ordinary development and browser-test commands
+use that certificate through `NODE_EXTRA_CA_CERTS`.
+
 ```sh
 bun install
 bun run dev        # development on :5173
@@ -37,6 +42,12 @@ bun run dev:prod   # production-mode preview on :5174
 
 `dev` serves Book Bidding directly at `http://localhost:5173`. Central Identity
 remains at `https://auth.localhost:8080` and does not proxy either application.
+
+The `dev` and `test:oidc-browser` commands use
+`../book-auth-middleware/central-identity-root.crt` by default. To use a
+different public CA, set `NODE_EXTRA_CA_CERTS` to its path before either
+command. The CA must exist; startup reports the Central setup command if it is
+missing. `dev:prod` does not use this development CA setting.
 
 `dev:prod` builds a production bundle
 from `.env.test-production` and serves it with Vite preview on `5174`. It uses
@@ -114,6 +125,13 @@ session. Existing app sessions remain usable until each app ends them or they
 expire.
 
 For local development, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md) for confidential-client provisioning. Book Bidding runs directly at `http://localhost:5173`; Central Identity remains at `https://auth.localhost:8080/api/auth`, and Reading runs at `http://localhost:3001`. Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed.
+
+Before using local HTTPS Central Identity, run `bun run dev:setup` from
+`../book-auth-middleware`. The setup exports the public CA at
+`../book-auth-middleware/central-identity-root.crt`. Both `bun run dev` and
+`bun run test:oidc-browser` load it through `NODE_EXTRA_CA_CERTS` by default;
+set `NODE_EXTRA_CA_CERTS=/path/to/your-ca.crt` to override. The commands fail
+with setup guidance when the selected CA file is missing.
 
 For local proof, open a protected Book Bidding page at `http://localhost:5173`. The app starts Central Identity authorization; complete provider sign-in and confirm return to the original destination with an independent Application Session. A matching email must not claim an unlinked local account; that owner must use Reviewed Recovery.
 
