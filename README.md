@@ -30,8 +30,8 @@ encrypted `.env.test-production`. Never use live `.env.production` for
 
 Before starting Book Bidding, run `bun run dev:setup` from the sibling
 `book-auth-middleware` repository. This exports its public development CA to
-`central-identity-root.crt`; the ordinary development and browser-test commands
-use that certificate through `NODE_EXTRA_CA_CERTS`.
+`central-identity-root.crt`; the `dev` command uses that certificate through
+`NODE_EXTRA_CA_CERTS`.
 
 ```sh
 bun install
@@ -43,11 +43,14 @@ bun run dev:prod   # production-mode preview on :5174
 `dev` serves Book Bidding directly at `http://localhost:5173`. Central Identity
 remains at `https://auth.localhost:8080` and does not proxy either application.
 
-The `dev` and `test:oidc-browser` commands use
-`../book-auth-middleware/central-identity-root.crt` by default. To use a
-different public CA, set `NODE_EXTRA_CA_CERTS` to its path before either
-command. Startup reports setup guidance if the selected CA is missing, unreadable,
-or invalid. `dev:prod` does not use this development CA setting.
+The `dev` command uses
+`../book-auth-middleware/central-identity-root.crt` by default. Set
+`NODE_EXTRA_CA_CERTS` to another readable PEM CA path to use a different
+development CA. Startup reports guidance if the selected CA is missing,
+unreadable, or invalid. The browser test does not require the local CA file; its
+Playwright Chromium uses the operating system/browser trust store for the
+configured Central Identity origin. `dev:prod` does not use this development
+CA setting.
 
 `dev:prod` builds a production bundle
 from `.env.test-production` and serves it with Vite preview on `5174`. It uses
