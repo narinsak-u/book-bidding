@@ -110,6 +110,54 @@ For manual public HTTPS proof, trust the development Caddy CA in the browser and
 
 Run `bun run test:oidc-browser` with `BIDDING_OIDC_TEST_ORIGIN=https://bidding.localhost:8080`, `READING_OIDC_TEST_ORIGIN=https://reading.localhost:8080`, `CENTRAL_IDENTITY_TEST_ORIGIN=https://auth.localhost:8080`, and the existing `CENTRAL_IDENTITY_TEST_EMAIL` and `CENTRAL_IDENTITY_TEST_PASSWORD` test credentials. The browser journey verifies Bidding sign-in, silent Central SSO reuse on Reading, separate host-only Application Session cookies, and restoration of both protected destinations without TLS bypass.
 
+### Disposable third Relying Party
+
+`scripts/third-rp.ts` runs a separate confidential OIDC client and a separate
+in-memory Application Session. Register its exact callback with Central
+Identity; keep the secret in the backend process only. The temporary edge
+overlay maps `third.localtest.me` to loopback port `15000`; do not add this host
+to the production edge configuration.
+
+From the standalone provider checkout, with its verified private environment file, register the exact callback:
+
+```sh
+docker compose --env-file /path/to/private-identity.env -f compose.identity.production.yaml run --rm --no-deps auth bun run --filter @central-identity/server provision:client third-rp '<operator-email-prefix>' https://third.localtest.me:15443/oidc/callback
+```
+
+This is operator-only enrollment; keep the one-time secret in the backend
+process environment below.
+
+
+```sh
+THIRD_RP_ORIGIN=https://third.localtest.me:15443 \
+THIRD_RP_ISSUER=https://identity.localtest.me:15443/api/auth \
+THIRD_RP_CLIENT_ID='<issued-client-id>' \
+THIRD_RP_CLIENT_SECRET='<issued-client-secret>' \
+THIRD_RP_PORT=15000 \
+NODE_EXTRA_CA_CERTS=/tmp/standalone42-ca.crt \
+bun scripts/third-rp.ts
+```
+The app binds to `127.0.0.1` by default. In its disposable container only,
+set `THIRD_RP_BIND_ADDRESS=0.0.0.0` and publish `15000` on host loopback.
+
+Run the browser journey with the existing Bidding, Reading, and Central
+Identity variables plus `THIRD_RP_TEST_ORIGIN=https://third.localtest.me:15443`.
+It verifies actual discovery, PKCE authorization, token validation, destination restoration, and distinct Application Sessions.
+For a same-run disable proof, set `THIRD_RP_DISABLE_RESUME_FILE=/tmp/standalone42-third-client-disabled` in the browser command. Remove stale signal first. The journey establishes all three Application Sessions, then pauses until the operator disables only the third client and creates the resume file in another terminal:
+Remove any stale resume signal before starting:
+
+```sh
+rm -f /tmp/standalone42-third-client-disabled
+```
+
+
+```sh
+docker compose --env-file /path/to/private-identity.env -f compose.identity.production.yaml run --rm --no-deps auth bun run --filter @central-identity/server disable:client '<issued-client-id>'
+touch /tmp/standalone42-third-client-disabled
+```
+
+The journey resumes and verifies the existing Bidding, Reading, and third-RP sessions, then checks that fresh third-RP authorization fails with `401 OAuth client is not approved`. For a separate run against an already-disabled client, use `THIRD_RP_EXPECT_DISABLED=1`.
+
 
 To link a legacy Application User, use Reviewed Recovery at `/account/identity/recovery`. It proves control of the existing local password or its already-linked Google/GitHub account, then verifies a Central Identity separately. Recovery creates no Application Session and changes no user or business data.
 
