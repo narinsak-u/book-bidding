@@ -13,14 +13,16 @@
   <Unauthentication />
 {:else}
   <div class="bg-background">
+    <!-- Header -->
     <HeaderSection
       title="Create New Auction"
       description="Create a new auction to start a bid on a book."
-      cta={{ text: "Back to Dashboard", href: "/dashboard", icon: "arrow_back" }}
+      cta={{ text: "Back to Dashboard", href: "/dashboard" }}
     />
 
+    <!-- Main Content -->
     <div>
-      <div class="p-4 md:p-8 w-full overflow-auto max-w-4xl mx-auto">
+      <div class="p-4 md:p-8 w-full overflow-auto">
         <FormField mode="create" />
       </div>
     </div>
