@@ -35,8 +35,9 @@ bun run dev        # development on :5173
 bun run dev:prod   # production-mode preview on :5174
 ```
 
-`dev` serves Book Bidding directly at `http://localhost:5173`. Central Identity
-remains at `https://auth.localhost:8080` and does not proxy either application.
+`dev` serves Book Bidding at `http://localhost:5173` and uses Central Identity
+at `http://localhost:8080`; no sibling CA or `NODE_EXTRA_CA_CERTS` is needed.
+`dev:prod` keeps HTTPS settings separate.
 
 `dev:prod` builds a production bundle
 from `.env.test-production` and serves it with Vite preview on `5174`. It uses
@@ -80,7 +81,7 @@ Schema in `src/lib/server/db/schema.ts`.
 
 ## Central Identity OIDC
 
-Local development uses the issuer `https://auth.localhost:8080/api/auth`.
+Local development uses the issuer `http://localhost:8080/api/auth`.
 Register `http://localhost:5173/api/auth/callback/central-identity` and
 `http://localhost:5173/api/identity-recovery/callback` with its OIDC client.
 Migration-only Google/GitHub proof clients use
@@ -88,8 +89,8 @@ Migration-only Google/GitHub proof clients use
 Production-like local mode uses the separate issuer
 `https://auth-test.localhost:8081/api/auth` and matching
 `https://bidding-test.localhost:8081` callbacks. These are not production
-registrations. Direct local HTTP uses a Bidding-specific, host-only session
-cookie distinct from Reading; HTTPS mode retains its original Secure cookies.
+registrations. HTTP development uses Bidding-specific host-only app session
+cookies; HTTPS mode retains its original Secure cookies.
 
 For production, wait for the operator to supply the actual Vercel project and Book Bidding hostname. Register both exact HTTPS callbacks at Central Identity, replacing the placeholder with that supplied host:
 
@@ -113,11 +114,11 @@ to Central sign-in; Google or GitHub may still retain a separate provider
 session. Existing app sessions remain usable until each app ends them or they
 expire.
 
-For local development, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md) for confidential-client provisioning. Book Bidding runs directly at `http://localhost:5173`; Central Identity remains at `https://auth.localhost:8080/api/auth`, and Reading runs at `http://localhost:3001`. Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed.
+For local development, follow the [Development SSO workflow](../book-auth-middleware/docs/local-oauth-sso.md) for confidential-client provisioning. Book Bidding runs at `http://localhost:5173`; Central Identity runs at `http://localhost:8080/api/auth`, and Reading runs at `http://localhost:3001`. Store Supabase/Stripe values in `.env.development`; keep `.env.keys` outside Git. Set the OIDC client ID and secret printed by `bun run provision:bidding` in `CENTRAL_OIDC_CLIENT_ID` and `CENTRAL_OIDC_CLIENT_SECRET`. Initialize a new development database with `bun run db:push` only when needed.
 
-For local proof, open a protected Book Bidding page at `http://localhost:5173`. The app starts Central Identity authorization; complete provider sign-in and confirm return to the original destination with an independent Application Session. A matching email must not claim an unlinked local account; that owner must use Reviewed Recovery.
+For local proof, open a protected Book Bidding page at `http://localhost:5173`. The app starts Central Identity authorization; complete sign-in and confirm return to the original destination with an independent Application Session. A matching email must not claim an unlinked local account; that owner must use Reviewed Recovery.
 
-Run `bun run test:oidc-browser` with `CENTRAL_IDENTITY_TEST_EMAIL` and `CENTRAL_IDENTITY_TEST_PASSWORD`. The script defaults to Book Bidding `http://localhost:5173`, Reading `http://localhost:3001`, and Central Identity `https://auth.localhost:8080`; override the `*_OIDC_TEST_ORIGIN` variables only when testing another topology. It verifies silent Central SSO reuse on Reading, separate host-only Application Session cookies, and restoration of both protected destinations.
+Run `bun run test:oidc-browser` with `CENTRAL_IDENTITY_TEST_EMAIL` and `CENTRAL_IDENTITY_TEST_PASSWORD`. The script defaults to Book Bidding `http://localhost:5173`, Reading `http://localhost:3001`, and Central Identity `http://localhost:8080`; override the `*_OIDC_TEST_ORIGIN` variables only when testing another topology. It verifies HTTP Central SSO, isolated host-only app cookies, Bidding sign-out scope, SSO reuse on Reading, and return to both protected destinations.
 
 ### Disposable third Relying Party
 

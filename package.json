@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "dotenvx run --strict --overload -f .env.development -- vite dev --host 0.0.0.0 --port 5173",
+    "dev": "dotenvx run --strict --overload -f .env.development -- vite dev --host 127.0.0.1 --port 5173",
     "dev:prod": "dotenvx run --strict --overload -f .env.test-production -fk .env.test-production.keys -- sh -c 'test \"$DATABASE_URL\" = \"file:local-test-production.db\" && { if [ ! -e local-test-production.db ]; then drizzle-kit push --force; fi; } && vite build && vite preview --host 0.0.0.0 --port 5174'",
     "test:oidc-browser": "bun scripts/test-oidc-browser.ts",
     "env:encrypt": "dotenvx encrypt -f .env.development -fk .env.keys",
