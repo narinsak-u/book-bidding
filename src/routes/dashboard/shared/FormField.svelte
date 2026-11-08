@@ -1,23 +1,19 @@
 <script lang="ts">
+  import Icon from "$lib/components/Icon.svelte";
   import type { ActionResult } from "@sveltejs/kit";
   import { CONDITIONS } from "./constants";
-  import type { Snippet } from "svelte";
   import { applyAction, deserialize } from "$app/forms";
   import { invalidateAll } from "$app/navigation";
   import DateTimeModal from "./DateTimeModal.svelte";
-  import { Button, P } from "flowbite-svelte";
-  import { ClockSolid } from "flowbite-svelte-icons";
   import ImageDropzone from "./ImageDropzone.svelte";
 
   interface Auction {
     id: string;
     title: string;
-    author: string; // Name of the author
+    author: string;
     description: string;
     currentBid: number;
     startingPrice: number;
-    // status: "active" | "ending-soon" | "ended";
-    // bidsCount: number;
     endDate: string;
     pages: number;
     yearPublished: number;
@@ -74,7 +70,6 @@
     }
   });
 
-  // If initial data is provided (edit mode), prefill the form
   $effect(() => {
     if (mode === "edit" && initialData) {
       auctionId = initialData.id ?? null;
@@ -88,7 +83,6 @@
       formData.condition = initialData.condition ?? CONDITIONS[1];
       existingFileKey = (initialData as any).fileKey ?? null;
 
-      // derive date and time from endDate (ms)
       const ms = (initialData as any).endDate ?? (initialData as any).endDateMs;
       if (ms) {
         const d = new Date(ms);
@@ -128,7 +122,6 @@
   ) => {
     event.preventDefault();
     loading = true;
-    // base validation
     if (
       !formData.title ||
       !formData.author ||
@@ -149,7 +142,6 @@
       return;
     }
 
-    // Build form payload
     const data = new FormData(event.currentTarget, event.submitter);
     data.append("currentBid", formData.currentBid.toString());
     if (filesInDropzone && filesInDropzone[0]) {
@@ -178,10 +170,8 @@
     });
 
     const result: ActionResult = deserialize(await response.text());
-    // console.log(result, "result");
 
     if (result.type === "success") {
-      // rerun all `load` functions, following the successful update
       await invalidateAll();
       if (mode === "create") {
         resetForm();
@@ -203,40 +193,40 @@
   action={formAction}
   enctype="multipart/form-data"
   onsubmit={handleSubmit}
-  class="space-y-4"
+  class="space-y-6"
 >
-  <div>
-    <label for="title" class="block text-sm font-medium text-foreground mb-1">
-      Title *
-    </label>
-    <input
-      required
-      type="text"
-      id="title"
-      name="title"
-      placeholder="Book title"
-      bind:value={formData.title}
-      class="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-    />
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div>
+      <label for="title" class="block text-sm font-medium text-on-surface mb-2">
+        Title *
+      </label>
+      <input
+        required
+        type="text"
+        id="title"
+        name="title"
+        placeholder="Book title"
+        bind:value={formData.title}
+        class="w-full px-4 py-3 border border-outline/30 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+      />
+    </div>
+    <div>
+      <label for="author" class="block text-sm font-medium text-on-surface mb-2">
+        Author *
+      </label>
+      <input
+        type="text"
+        id="author"
+        name="author"
+        placeholder="Book author"
+        bind:value={formData.author}
+        class="w-full px-4 py-3 border border-outline/30 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+      />
+    </div>
   </div>
+
   <div>
-    <label for="author" class="block text-sm font-medium text-foreground mb-1">
-      Author *
-    </label>
-    <input
-      type="text"
-      id="author"
-      name="author"
-      placeholder="Book author"
-      bind:value={formData.author}
-      class="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-    />
-  </div>
-  <div>
-    <label
-      for="description"
-      class="block text-sm font-medium text-foreground mb-1"
-    >
+    <label for="description" class="block text-sm font-medium text-on-surface mb-2">
       Description *
     </label>
     <textarea
@@ -245,15 +235,13 @@
       name="description"
       placeholder="Book description"
       bind:value={formData.description}
-      class="w-full h-24 px-4 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+      class="w-full h-32 px-4 py-3 border border-outline/30 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-none"
     ></textarea>
   </div>
-  <div class="flex gap-4 items-center justify-between w-full flex-wrap mb-6">
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     <div>
-      <label
-        for="condition"
-        class="block text-sm font-medium text-foreground mb-1"
-      >
+      <label for="condition" class="block text-sm font-medium text-on-surface mb-2">
         Condition *
       </label>
       <select
@@ -261,7 +249,7 @@
         required
         name="condition"
         bind:value={formData.condition}
-        class="w-full px-8 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        class="w-full px-4 py-3 border border-outline/30 rounded-lg bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
       >
         {#each CONDITIONS as condition}
           <option value={condition}>{condition}</option>
@@ -269,7 +257,7 @@
       </select>
     </div>
     <div>
-      <label for="pages" class="block text-sm font-medium text-foreground mb-1">
+      <label for="pages" class="block text-sm font-medium text-on-surface mb-2">
         Pages *
       </label>
       <input
@@ -280,14 +268,11 @@
         name="pages"
         placeholder="Number of pages"
         bind:value={formData.pages}
-        class="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        class="w-full px-4 py-3 border border-outline/30 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
       />
     </div>
     <div>
-      <label
-        for="yearPublished"
-        class="block text-sm font-medium text-foreground mb-1"
-      >
+      <label for="yearPublished" class="block text-sm font-medium text-on-surface mb-2">
         Year Published *
       </label>
       <input
@@ -297,14 +282,11 @@
         name="yearPublished"
         placeholder="Year published"
         bind:value={formData.yearPublished}
-        class="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        class="w-full px-4 py-3 border border-outline/30 rounded-lg bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
       />
     </div>
     <div>
-      <label
-        for="startingPrice"
-        class="block text-sm font-medium text-foreground mb-1"
-      >
+      <label for="startingPrice" class="block text-sm font-medium text-on-surface mb-2">
         Starting Price *
       </label>
       <input
@@ -315,77 +297,60 @@
         bind:value={formData.startingPrice}
         min="0"
         step="50"
-        class="w-full px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        class="w-full px-4 py-3 border border-outline/30 rounded-lg bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
       />
     </div>
   </div>
 
-  <!-- Image Dropzone -->
   <ImageDropzone
     bind:filesInDropzone
     required={imageRequired}
     {existingFileKey}
   />
 
-  <!-- show image preview -->
   {#if filesInDropzone && filesInDropzone.length > 0}
-    <div class="w-full">
-      <img src={previewUrl} alt="Preview" class="w-full h-full object-cover" />
+    <div class="w-full max-w-md">
+      <img src={previewUrl} alt="Preview" class="w-full h-full object-cover rounded-lg border border-outline/20" />
     </div>
   {:else if existingFileKey}
-    <div class="w-full">
+    <div class="w-full max-w-md">
       <img
         src={existingFileKey}
         alt="Preview"
-        class="w-full h-full object-cover"
+        class="w-full h-full object-cover rounded-lg border border-outline/20"
       />
     </div>
   {/if}
 
-  <!-- Set Auction End Time -->
-  <div class="flex gap-4 items-center w-full">
-    <Button class="cursor-pointer" onclick={() => (open = true)}>
-      <ClockSolid class="me-2 h-4 w-4" />
+  <div class="flex gap-4 items-center flex-wrap">
+    <button
+      type="button"
+      onclick={() => (open = true)}
+      class="inline-flex items-center gap-2 px-5 py-2.5 cursor-pointer bg-surface-container border border-outline/30 text-on-surface rounded-lg hover:bg-surface-container-high transition font-medium"
+    >
+      <Icon icon="schedule" />
       Set Auction End Time
-    </Button>
+    </button>
 
-    {#if modalTimeSelection}
-      <P>
+    {#if modalTimeSelection.time}
+      <p class="text-sm text-on-surface-variant">
         Auction end time set for
-        <span class="font-semibold">
+        <span class="font-semibold text-on-surface">
           {modalSelectedDate.toDateString()} at {modalTimeSelection.time}
         </span>
-      </P>
+      </p>
     {/if}
   </div>
 
   <DateTimeModal bind:open bind:modalSelectedDate bind:modalTimeSelection />
 
   <div class="flex gap-3 pt-4">
-    {#if mode === "create"}
-      <button
-        type="submit"
-        disabled={loading}
-        class="flex-1 cursor-pointer px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition font-medium"
-      >
-        {#if loading}
-          Creating...
-        {:else}
-          Create
-        {/if}
-      </button>
-    {:else}
-      <button
-        type="submit"
-        disabled={loading}
-        class="flex-1 cursor-pointer px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition font-medium"
-      >
-        {#if loading}
-          Updating...
-        {:else}
-          Update
-        {/if}
-      </button>
-    {/if}
+    <button
+      type="submit"
+      disabled={loading}
+      class="flex-1 cursor-pointer px-6 py-3 bg-primary text-on-primary rounded-lg hover:opacity-90 transition font-medium disabled:opacity-50"
+    >
+      {loading ? (mode === "create" ? "Creating..." : "Updating...") : (mode === "create" ? "Create Auction" : "Update Auction")}
+    </button>
   </div>
 </form>

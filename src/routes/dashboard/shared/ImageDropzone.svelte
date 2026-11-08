@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Dropzone } from "flowbite-svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let {
     filesInDropzone = $bindable(),
@@ -8,76 +8,78 @@
   } = $props();
 
   function handleOnChange(event: Event) {
-    // console.log("handleOnChange fired.");
     const target = event.target as HTMLInputElement;
     filesInDropzone = target.files;
   }
 
   function handleOnDrop(event: DragEvent) {
-    // console.log("handleOnDrop fired.");
     event.preventDefault();
     filesInDropzone = event.dataTransfer?.files ?? null;
   }
 
+  function handleDragOver(event: DragEvent) {
+    event.preventDefault();
+  }
+
   function showFiles(files: FileList | null): string {
-    // console.log("showFiles fired.");
     if (!files || files.length === 0) return "No files selected.";
     return Array.from(files)
       .map((file) => file.name)
       .join(", ");
   }
+
+  function clearFiles() {
+    filesInDropzone = null;
+    existingFileKey = null;
+  }
+
+  const hasFile = $derived((!filesInDropzone || filesInDropzone.length === 0) && !existingFileKey);
 </script>
 
-<Dropzone
-  {required}
-  id="my-awesome-dropzone"
-  bind:files={filesInDropzone}
-  onChange={handleOnChange}
-  onDrop={handleOnDrop}
-  multiple
-  accept=".jpg,.png,.gif"
-  class="w-full h-48 p-4 flex-wrap"
+<div
+  class="relative w-full h-48 border-2 border-dashed border-outline/40 rounded-xl p-4 flex flex-col items-center justify-center transition-all cursor-pointer hover:border-primary hover:bg-surface-container/50"
+  role="button"
+  tabindex="0"
+  ondrop={handleOnDrop}
+  ondragover={handleDragOver}
 >
-  <div class="w-full flex flex-col items-center justify-center">
-    <svg
-      aria-hidden="true"
-      class="mb-3 h-10 w-10 text-gray-400"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-      />
-    </svg>
+  <input
+    type="file"
+    accept=".jpg,.png,.gif"
+    multiple
+    {required}
+    onchange={handleOnChange}
+    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+  />
+  
+  <div class="flex flex-col items-center text-center">
+    <div class="mb-3 p-3 rounded-full bg-surface-container">
+      <Icon icon="cloud_upload" class="text-3xl text-on-surface-variant" />
+    </div>
 
-    {#if (!filesInDropzone || filesInDropzone.length === 0) && !existingFileKey}
-      <p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
+    {#if hasFile}
+      <p class="mb-1 text-sm text-on-surface">
         <span class="font-semibold">Click to upload</span>
         or drag and drop
       </p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">
+      <p class="text-xs text-on-surface-variant">
         SVG, PNG, JPG or GIF (MAX. 800x400px)
       </p>
     {:else}
-      <p class="text-sm text-green-600 wrap-anywhere">
-        {existingFileKey
-          ? "Current Image: " + existingFileKey
-          : "Selected Image: " + showFiles(filesInDropzone)}
+      <p class="text-sm text-green-600 dark:text-green-400 wrap-anywhere">
+        {#if existingFileKey}
+          Current Image: {existingFileKey}
+        {:else}
+          Selected: {showFiles(filesInDropzone)}
+        {/if}
       </p>
       <button
-        class="mt-2 text-sm text-red-500 hover:underline"
-        onclick={() => {
-          filesInDropzone = null;
-          existingFileKey = null;
-        }}
+        type="button"
+        class="mt-2 text-sm text-secondary hover:underline"
+        onclick={(e) => { e.preventDefault(); clearFiles(); }}
       >
         Clear Files
       </button>
     {/if}
   </div>
-</Dropzone>
+</div>

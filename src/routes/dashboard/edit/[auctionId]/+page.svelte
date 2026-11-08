@@ -17,16 +17,14 @@
   <Unauthentication />
 {:else}
   <div class="bg-background">
-    <!-- Header -->
     <HeaderSection
       title="Edit Auction"
       description="Update auction details and image or end date"
-      cta={{ text: "Back to Dashboard", href: "/dashboard" }}
+      cta={{ text: "Back to Dashboard", href: "/dashboard", icon: "arrow_back" }}
     />
 
-    <!-- Main Content -->
     <div>
-      <div class="p-4 md:p-8 w-full overflow-auto">
+      <div class="p-4 md:p-8 w-full overflow-auto max-w-4xl mx-auto">
         <FormField
           mode="edit"
           initialData={initialData

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { ChevronDoubleRightOutline } from "flowbite-svelte-icons";
+  import Icon from "./Icon.svelte";
   import { FALLBACK_IMAGE } from "../../routes/dashboard/shared/constants";
   import { formatDate } from "../../routes/helpers";
+  import ConditionChip from "./ConditionChip.svelte";
 
   let {
     bid,
@@ -24,190 +25,149 @@
       ? (bid?.item ?? null)
       : mode === "purchased"
         ? (purchase?.item ?? null)
-        : (book ?? null)
+        : (book ?? null),
   );
-  const receiptUrl = $derived(
-    mode === "purchased" ? (purchase?.receiptUrl ?? null) : null
-  );
+
   const imageUrl = $derived(item?.fileKey || FALLBACK_IMAGE);
   const isWinner = $derived(
     !!item?.currentBid &&
       !!bid &&
       bid?.amount >= item.currentBid &&
-      bid?.userId === userId
+      bid?.userId === userId,
   );
   const isOutbid = $derived(
-    !!item?.currentBid && !!bid && bid?.amount < item.currentBid
+    !!item?.currentBid && !!bid && bid?.amount < item.currentBid,
   );
 
   const handleCheckout = () => {
     if (onCheckout) onCheckout(bid);
   };
+
+  const getStatusDisplay = () => {
+    switch (mode) {
+      case "active":
+        return {
+          text: isOutbid ? "OUTBID" : "ACTIVE",
+          class: isOutbid ? "text-secondary" : "text-primary",
+        };
+      case "awaiting":
+        return { text: "AWAITING SETTLEMENT", class: "text-secondary" };
+      case "purchased":
+        return { text: "ACQUIRED", class: "text-green-600" };
+      case "sold":
+        return { text: "SOLD", class: "text-primary" };
+      default:
+        return {
+          text: isWinner ? "WON" : "ENDED",
+          class: isWinner ? "text-green-600" : "text-outline",
+        };
+    }
+  };
+
+  const status = $derived(getStatusDisplay());
+
+  const getPriceLabel = () => {
+    switch (mode) {
+      case "sold":
+        return "REVENUE";
+      case "purchased":
+        return "ACQUISITION";
+      case "active":
+        return "YOUR BID";
+      default:
+        return "FINAL PRICE";
+    }
+  };
 </script>
 
 <div
-  class="flex items-center gap-4 bg-card border border-border rounded-md p-4"
+  class="group flex items-center gap-6 bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/5 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
 >
-  <img
-    src={imageUrl}
-    alt={item?.name || "Auction"}
-    class="w-20 h-20 rounded object-cover border border-border"
-  />
-  <div class="flex-1">
-    <div class="flex flex-wrap items-center gap-2">
-      <a
-        href={`/auctions/${item?.id}`}
-        class="font-semibold text-foreground hover:underline"
-      >
-        {item?.name}
-      </a>
-      {#if item?.author}
-        <span class="text-sm text-muted-foreground">by {item.author}</span>
-      {/if}
+  <!-- Thumbnail -->
+  <div
+    class="w-20 h-24 bg-surface-container-high rounded shadow-md overflow-hidden flex-shrink-0 border-b-2 border-primary/10"
+  >
+    <img
+      src={imageUrl}
+      alt={item?.name}
+      class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+    />
+  </div>
 
-      <!-- Status Badge -->
-      {#if mode === "active"}
-        <span
-          class="inline-block bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded text-xs"
+  <!-- Content -->
+  <div class="flex-1 flex items-center justify-between min-w-0">
+    <div class="space-y-1 min-w-0 pr-4">
+      <div class="flex items-center gap-3">
+        <h3
+          class="font-headline font-bold text-primary truncate text-lg tracking-tight group-hover:text-secondary transition-colors"
         >
-          Active
-        </span>
-      {:else if mode === "awaiting"}
-        <span
-          class="inline-block bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 px-2 py-0.5 rounded text-xs"
-        >
-          Awaiting Payment
-        </span>
-      {:else if mode === "purchased"}
-        <span
-          class="inline-block bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded text-xs"
-        >
-          Purchased
-        </span>
-      {:else if mode === "sold"}
-        <span
-          class="inline-block bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-2 py-0.5 rounded text-xs"
-        >
-          Sold
-        </span>
-      {:else}
-        <span
-          class="inline-block bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 px-2 py-0.5 rounded text-xs"
-        >
-          Ended
-        </span>
-      {/if}
+          {item?.name.toUpperCase()}
+        </h3>
+        <ConditionChip text={item?.condition || "Fine"} />
+      </div>
+      <p class="text-xs font-body italic text-on-surface-variant">
+        by {item?.author}
+      </p>
     </div>
 
-    <!-- Bid Details -->
-    <div
-      class="flex flex-col md:flex-row md:items-center md:justify-between gap-2"
-    >
-      <div class="mt-2 text-sm text-muted-foreground">
-        <!-- metadata -->
-        {#if mode === "active" || mode === "ended"}
-          Placed: {formatDate(bid?.createdAt)} · Your bid:
-          <span class="font-semibold text-foreground">
-            ${bid?.amount != null ? `${bid?.amount?.toLocaleString?.()}` : ""}
-          </span>
-          {#if item?.currentBid}
-            {#if mode === "active"}
-              · Current: <span class="font-semibold text-accent">
-                ${`${item.currentBid?.toLocaleString?.()}`}
-              </span>
-            {:else}
-              · Final: <span class="font-semibold text-accent">
-                ${`${item.currentBid?.toLocaleString?.()}`}
-              </span>
-            {/if}
-          {/if}
-        {:else}
-          Ended: {formatDate(item?.endDate)} · {mode === "sold"
-            ? "Sold for"
-            : "Final"}:
-          <span class="font-semibold text-foreground">
-            ${item?.currentBid != null
-              ? `${item?.currentBid?.toLocaleString?.()}`
-              : ""}
-          </span>
-          {#if mode === "awaiting" && item?.bids?.length}
-            · Bids: <span class="font-semibold">{item.bids.length}</span>
-          {/if}
-        {/if}
+    <!-- Metadata Columns -->
+    <div class="hidden md:flex items-center gap-8 text-center flex-shrink-0">
+      <div class="w-px h-10 bg-outline-variant/10"></div>
 
-        <!-- winner tag -->
-        {#if mode === "ended" && isWinner}
-          <span class="font-semibold text-green-600 dark:text-green-400">
-            Won:
-          </span>
-          <span class="ml-1">Congratulations! You've won this item. 🎉</span>
-        {/if}
-
-        <!-- outbid tag -->
-        {#if mode === "active" && isOutbid}
-          <br />
-          <span class="font-semibold text-red-600 dark:text-red-400">
-            Outbid:
-          </span>
-          <span class="ml-1">Increase your bid to secure this item!</span>
-        {/if}
+      <div class="flex flex-col min-w-[80px]">
+        <span
+          class="text-[9px] font-label font-bold text-outline uppercase tracking-widest mb-1"
+          >Status</span
+        >
+        <span
+          class="font-headline font-black text-xs tracking-wider {status.class}"
+          >{status.text}</span
+        >
       </div>
 
-      <!-- Action Buttons, active => bid now, ended -> winner => checkout, else => view detail -->
-      {#if mode === "ended"}
-        {#if isWinner}
-          <button
-            onclick={handleCheckout}
-            class="group w-28 text-center font-koulen flex items-center gap-1 px-4 py-2 cursor-pointer bg-green-600 text-primary-foreground rounded-lg hover:opacity-90 transition text-sm"
-          >
-            <span class="transition-transform group-hover:translate-x-0">
-              Checkout
-            </span>
-            <ChevronDoubleRightOutline
-              class="shrink-0 h-5 w-5 transition-transform group-hover:translate-x-1 group-hover:scale-110"
-            />
-          </button>
-        {:else}
-          <a
-            href={`/auctions/${item?.id}`}
-            class="px-4 w-28 text-center py-2 cursor-pointer font-koulen bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition text-sm"
-          >
-            View Detail
-          </a>
-        {/if}
-      {:else if mode === "active"}
-        <a
-          href={`/auctions/${item?.id}`}
-          class="px-4 w-28 text-center py-2 cursor-pointer font-koulen bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition text-sm"
+      <div class="w-px h-10 bg-outline-variant/10"></div>
+
+      <div class="flex flex-col min-w-[100px]">
+        <span
+          class="text-[9px] font-label font-bold text-outline uppercase tracking-widest mb-1"
+          >{getPriceLabel()}</span
         >
-          Bid Now
-        </a>
-      {:else if mode === "awaiting"}
-        <a
-          href={`/auctions/${item?.id}`}
-          class="px-4 w-28 text-center py-2 cursor-pointer font-koulen bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition text-sm"
+        <span
+          class="font-headline font-black text-lg text-primary leading-none"
         >
-          View Detail
-        </a>
-      {:else if mode === "purchased"}
-        {#if receiptUrl}
-          <a
-            href={receiptUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="px-4 w-36 text-center py-2 cursor-pointer font-koulen bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition text-sm"
-          >
-            View Receipt
-          </a>
-        {/if}
-      {:else if mode === "sold"}
-        <a
-          href={`/auctions/${item?.id}`}
-          class="px-4 w-28 text-center py-2 cursor-pointer font-koulen bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition text-sm"
+          ${(bid?.amount ?? item?.currentBid ?? 0).toLocaleString()}
+        </span>
+      </div>
+
+      <div class="w-px h-10 bg-outline-variant/10"></div>
+
+      <div class="flex flex-col min-w-[120px]">
+        <span
+          class="text-[9px] font-label font-bold text-outline uppercase tracking-widest mb-1"
+          >DATE</span
         >
-          View Detail
-        </a>
+        <span class="font-headline font-bold text-xs text-primary uppercase"
+          >{formatDate(item?.endDate || new Date())}</span
+        >
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-4 ml-8">
+      {#if mode === "ended" && isWinner}
+        <button
+          onclick={handleCheckout}
+          class="bg-secondary text-on-secondary px-6 py-2 rounded-lg font-headline font-bold text-[10px] uppercase tracking-widest shadow-lg hover:shadow-secondary/20 transition-all active:scale-95 cursor-pointer"
+        >
+          Settle
+        </button>
       {/if}
+      <a
+        href={`/auctions/${item?.id}`}
+        class="w-10 h-10 flex items-center justify-center rounded-full text-outline hover:text-primary hover:bg-surface-container-low transition-all"
+      >
+        <Icon icon="chevron_right" />
+      </a>
     </div>
   </div>
 </div>
