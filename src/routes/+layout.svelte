@@ -18,7 +18,7 @@
   const siteUrl = dev ? "http://localhost:5173" : PUBLIC_FRONTEND_URL;
   const siteName = "Book Bidding";
   const siteDesc = "Premium book auction platform for collectors.";
-  const centralIdentityUrl = dev ? "https://auth.localhost:8080" : publicEnv.PUBLIC_CENTRAL_IDENTITY_URL;
+  const centralIdentityUrl = dev ? "http://localhost:8080" : publicEnv.PUBLIC_CENTRAL_IDENTITY_URL;
   let signOutError = $state("");
 
   async function signOutOfBidding() {

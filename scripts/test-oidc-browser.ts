@@ -44,7 +44,7 @@ async function waitForDisableResumeFile(path: string): Promise<void> {
 
 const biddingOrigin = new URL(process.env.BIDDING_OIDC_TEST_ORIGIN ?? "http://localhost:5173").origin;
 const readingOrigin = new URL(process.env.READING_OIDC_TEST_ORIGIN ?? "http://localhost:3001").origin;
-const identityOrigin = new URL(process.env.CENTRAL_IDENTITY_TEST_ORIGIN ?? "https://auth.localhost:8080").origin;
+const identityOrigin = new URL(process.env.CENTRAL_IDENTITY_TEST_ORIGIN ?? "http://localhost:8080").origin;
 const email = required("CENTRAL_IDENTITY_TEST_EMAIL");
 const password = required("CENTRAL_IDENTITY_TEST_PASSWORD");
 const biddingDestination = process.env.BIDDING_OIDC_TEST_DESTINATION ?? "/dashboard";
@@ -70,16 +70,28 @@ try {
   await page.waitForURL((url) => url.origin === biddingTarget.origin && url.pathname === biddingTarget.pathname && url.search === biddingTarget.search, { waitUntil: "domcontentloaded", timeout: coldStartTimeout });
   const biddingSession = await page.evaluate(async () => await (await fetch("/api/auth/get-session")).json());
   assert.ok(biddingSession, "Bidding must establish an Application Session");
+  const centralCookies = await context.cookies(identityOrigin);
+  const centralSessionCookie = centralCookies.find((cookie) => cookie.name.endsWith(
+    new URL(identityOrigin).protocol === "http:" ? "central-identity.session_token" : "better-auth.session_token",
+  ));
+  assert.ok(centralSessionCookie, "Central Identity must establish its SSO session");
+  assert.equal(centralSessionCookie.domain, new URL(identityOrigin).hostname, "Central SSO cookie must be host-only");
+  assert.equal(centralSessionCookie.secure, new URL(identityOrigin).protocol === "https:", "Central SSO cookie security must match its origin");
+
   const biddingCookies = await context.cookies(biddingOrigin);
   const biddingSessionCookie = biddingCookies.find((cookie) => cookie.name.endsWith(biddingTarget.hostname === "localhost" ? "bidding.session_token" : "better-auth.session_token"));
   assert.ok(biddingSessionCookie, "Bidding must use a session cookie");
   assert.equal(biddingSessionCookie.domain, new URL(biddingOrigin).hostname, "Bidding session cookie must be host-only");
+  assert.notEqual(biddingSessionCookie.name, centralSessionCookie.name, "Central and Bidding session cookies must not collide");
 
   await page.getByRole("button", { name: "Book Bidding sign-out" }).click();
   await page.waitForURL((url) => url.origin === biddingTarget.origin && url.pathname === "/auth/login" && url.searchParams.get("manual") === "1", { waitUntil: "domcontentloaded", timeout: coldStartTimeout });
   await page.waitForTimeout(1_000);
   assert.equal(new URL(page.url()).origin, biddingTarget.origin, "local sign-out must not restart Central authorization");
   assert.equal(await page.evaluate(async () => await (await fetch("/api/auth/get-session")).json()), null);
+  assert.ok((await context.cookies(identityOrigin)).some((cookie) =>
+    cookie.name === centralSessionCookie.name && cookie.value === centralSessionCookie.value),
+  "Book Bidding sign-out must preserve Central SSO");
 
   console.log("Checking Bidding reauthorization");
   await page.goto(biddingTarget.href, { waitUntil: "domcontentloaded", timeout: coldStartTimeout });
@@ -158,6 +170,19 @@ try {
   } else if (process.env.THIRD_RP_EXPECT_DISABLED === "1" || disableResumeFile) {
     throw new Error("THIRD_RP_EXPECT_DISABLED or THIRD_RP_DISABLE_RESUME_FILE requires THIRD_RP_TEST_ORIGIN");
   }
+
+  console.log("Checking Reading sign-out isolation");
+  await page.goto(readingTarget.href, { waitUntil: "domcontentloaded", timeout: coldStartTimeout });
+  await page.getByRole("button", { name: "Open profile menu" }).click();
+  const readingSignOut = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/auth/sign-out" && response.status() === 200,
+    { timeout: coldStartTimeout },
+  );
+  await page.getByRole("button", { name: "Sign out of Read in Peace" }).click();
+  await readingSignOut;
+  assert.equal(await (await context.request.get(new URL("/api/auth/get-session", readingOrigin).href)).json(), null, "Reading sign-out must end its Application Session");
+  assert.equal((await (await context.request.get(new URL("/api/auth/get-session", biddingOrigin).href)).json())?.session?.id, activeBiddingSession.session.id, "Reading sign-out must preserve Bidding Application Session");
+  assert.ok((await (await context.request.get(new URL("/api/auth/get-session", identityOrigin).href)).json())?.session, "Reading sign-out must preserve Central SSO");
 
 } finally {
   await browser.close();
